@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --radius: 8px; --border: #bbb; --nav-bg: #333; --nav-text: #fff; --nav-hover: #444;
+      --bg:#fafafa; --text:#222; --muted:#eee;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; color:var(--text); background:var(--bg); }
+    nav { background: var(--nav-bg); padding: 0.6rem 1rem; }
+    nav ul { list-style:none; margin:0; padding:0; display:flex; gap:1rem; flex-wrap:wrap; }
+    nav a { color:var(--nav-text); text-decoration:none; padding:0.4rem 0.8rem; border-radius:var(--radius); }
+    nav a:hover { background: var(--nav-hover); }
+    .container { width:92%; max-width:900px; margin:2rem auto; }
+    .card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; }
+    h1 { margin-top:0; }
+    .muted { color:#555; }
+    .back { margin-top:1rem; display:inline-block; }
+  </style>
+</head>
+<body>
+
+  <!-- same nav as index.html -->
+  <nav>
+    <ul>
+      <li><a href="/search">Search</a></li>
+      <li><a href="/compare">Comparison Tool</a></li>
+      <li><a href="/submit-aar">Submit AAR</a></li>
+      <li><a href="/submit-recommendations">Submit Recommendations</a></li>
+      <li><a href="/profile">Profile</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h1>{{ title }}</h1>
+      <p class="muted">{{ lead }}</p>
+      <a class="back" href="/">← Back to UAS Database</a>
+    </div>
+  </div>
+</body>
+</html>

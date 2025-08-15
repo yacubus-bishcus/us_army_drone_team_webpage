@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Profile — Skynet Database</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --radius:8px; --border:#bbb; --border-strong:#999; --bg:#fafafa; --muted:#eee; --text:#222; --nav-bg:#333; --nav-text:#fff; --nav-hover:#444; }
+    * { box-sizing:border-box; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:var(--bg); color:var(--text); }
+    nav { background:var(--nav-bg); padding:0.6rem 1rem; }
+    nav ul { list-style:none; margin:0; padding:0; display:flex; gap:1rem; flex-wrap:wrap; }
+    nav a { color:var(--nav-text); text-decoration:none; padding:0.4rem 0.8rem; border-radius:var(--radius); }
+    nav a:hover { background:var(--nav-hover); }
+    .container { width:92%; max-width:900px; margin:2rem auto; display:grid; gap:1rem; }
+    .card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:1rem; }
+    h1 { margin:0 0 0.5rem; }
+    .alerts { max-width:900px; margin:0 auto; }
+    .alert { padding:10px 14px; border-radius:var(--radius); border:1px solid var(--border); margin-bottom:8px; text-align:center; }
+    .alert-success { background:#f0fff0; border-color:#b2e6b2; }
+    .alert-error { background:#fff0f0; border-color:#e6b2b2; }
+    form { display:grid; gap:10px; }
+    label { font-size:.9rem; }
+    input { padding:10px; border:1px solid var(--border); border-radius:var(--radius); width:100%; background:#fff; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { padding:10px 14px; border:1px solid var(--border-strong); background:var(--muted); border-radius:var(--radius); cursor:pointer; text-decoration:none; color:inherit; }
+    .grid { display:grid; gap:1rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .meta { color:#666; font-size:.95rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="{{ url_for('core.home') }}">Home</a></li>
+      <li><a href="{{ url_for('search.search') }}">Search</a></li>
+      <li><a href="{{ url_for('compare.compare') }}">Comparison Tool</a></li>
+      <li><a href="{{ url_for('aars.submit_aar') }}">Submit AAR</a></li>
+      <li><a href="/submit-recommendations">Submit Recommendations</a></li>
+      <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
+      {% if current_user.is_authenticated %}
+        <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
+      {% else %}
+        <li><a href="{{ url_for('auth.login_page') }}">Login</a></li>
+        <li><a href="{{ url_for('auth.register_page') }}">Request Access</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <div class="container">
+    <div class="alerts">
+      {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+      {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    </div>
+
+    <h1>Profile</h1>
+    <p class="meta">Signed in as <strong>{{ username }}</strong>. AARs submitted: <strong>{{ my_aar_count }}</strong>.</p>
+
+    <div class="grid">
+      <!-- Change password -->
+      <div class="card">
+        <h2 style="margin-top:0;">Change Password</h2>
+        <form method="POST" action="{{ url_for('profile.view') }}">
+          <div>
+            <label for="current_password">Current password</label>
+            <input id="current_password" name="current_password" type="password" required />
+          </div>
+          <div>
+            <label for="new_password">New password (min 8 chars)</label>
+            <input id="new_password" name="new_password" type="password" minlength="8" required />
+          </div>
+          <div>
+            <label for="confirm_password">Confirm new password</label>
+            <input id="confirm_password" name="confirm_password" type="password" minlength="8" required />
+          </div>
+          <div class="actions">
+            <button class="btn" type="submit">Update Password</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Suggestions / future settings -->
+      <div class="card">
+        <h2 style="margin-top:0;">Settings & Suggestions</h2>
+        <ul class="meta" style="margin:0 0 10px 16px;">
+          <li>Email address (store on user record)</li>
+          <li>Notification preferences (AAR approvals, mentions)</li>
+          <li>Export my data (AARs I authored)</li>
+          <li>Delete my account (admin approval)</li>
+          <li>Two-factor auth (TOTP) — future</li>
+        </ul>
+        <p class="meta">Want any of these now? I can wire them up in a backwards-compatible way.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Submit Recommendations — Skynet Database</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --radius:8px; --border:#bbb; --border-strong:#999; --bg:#fafafa; --muted:#eee; --text:#222; --nav-bg:#333; --nav-text:#fff; --nav-hover:#444; }
+    * { box-sizing:border-box; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:var(--bg); color:var(--text); }
+    nav { background:var(--nav-bg); padding:0.6rem 1rem; }
+    nav ul { list-style:none; margin:0; padding:0; display:flex; gap:1rem; flex-wrap:wrap; }
+    nav a { color:var(--nav-text); text-decoration:none; padding:0.4rem 0.8rem; border-radius:var(--radius); }
+    nav a:hover { background:var(--nav-hover); }
+    .container { width:92%; max-width:900px; margin:2rem auto; display:grid; gap:1rem; }
+    .card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:1rem; }
+    h1 { margin:0 0 0.5rem; }
+    form { display:grid; gap:12px; }
+    .row { display:grid; gap:10px; }
+    .row.cols-2 { grid-template-columns: 1fr 1fr; }
+    label { font-size:.9rem; }
+    input, textarea { width:100%; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:#fff; }
+    textarea { min-height:140px; resize:vertical; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { padding:10px 14px; border:1px solid var(--border-strong); background:var(--muted); border-radius:var(--radius); cursor:pointer; text-decoration:none; color:inherit; }
+    .alerts { max-width:900px; margin:0 auto; }
+    .alert { padding:10px 14px; border-radius:var(--radius); border:1px solid var(--border); margin-bottom:8px; text-align:center; }
+    .alert-success { background:#f0fff0; border-color:#b2e6b2; }
+    .alert-error { background:#fff0f0; border-color:#e6b2b2; }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="{{ url_for('core.home') }}">Home</a></li>
+      <li><a href="{{ url_for('search.search') }}">Search</a></li>
+      <li><a href="{{ url_for('compare.compare') }}">Comparison Tool</a></li>
+      <li><a href="{{ url_for('aars.submit_aar') }}">Submit AAR</a></li>
+      <li><a href="{{ url_for('recommendations.submit') }}">Submit Recommendations</a></li>
+      <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
+      {% if current_user.is_authenticated %}
+        <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
+      {% else %}
+        <li><a href="{{ url_for('auth.login_page') }}">Login</a></li>
+        <li><a href="{{ url_for('auth.register_page') }}">Request Access</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <div class="container">
+    <div class="alerts">
+      {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+      {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    </div>
+
+    <h1>Submit Recommendations</h1>
+
+    <div class="card">
+      <form method="POST" action="{{ url_for('recommendations.submit') }}">
+        <div class="row">
+          <div>
+            <label for="unit">Unit (optional)</label>
+            <input id="unit" name="unit" type="text" placeholder="e.g., 1-101 AVN (ARB)" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="subject">Recommendation subject*</label>
+            <input id="subject" name="subject" type="text" required placeholder="Short, descriptive subject" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="message">Message*</label>
+            <textarea id="message" name="message" required placeholder="Describe the recommendation and reasoning. Include any context, benefits, and suggested changes."></textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="submit">Send Recommendation</button>
+          <a class="btn" href="{{ url_for('recommendations.submit') }}">Reset</a>
+        </div>
+
+        <p class="meta" style="color:#666; margin:8px 0 0;">
+          After submitting, you’ll see a confirmation that your message was sent. Responses usually take <strong>48–72 hours</strong>.
+        </p>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

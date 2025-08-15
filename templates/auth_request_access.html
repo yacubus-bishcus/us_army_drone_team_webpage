@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Request Access — Skynet Database</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; background:#fafafa; color:#222; }
+    .wrap { width:min(520px,92%); margin:3rem auto; background:#fff; border:1px solid #bbb; border-radius:10px; padding:1rem; }
+    h1 { margin-top:0; text-align:center; }
+    .alert { padding:10px; border:1px solid #e6b2b2; background:#fff0f0; border-radius:8px; margin-bottom:10px; text-align:center; }
+    form { display:grid; gap:10px; }
+    label { font-size:.9rem; }
+    input, textarea { padding:10px; border:1px solid #bbb; border-radius:8px; }
+    button, a.btn { padding:10px 14px; border:1px solid #999; background:#eee; border-radius:8px; cursor:pointer; text-decoration:none; color:inherit; text-align:center; }
+    .row { display:flex; gap:10px; justify-content:space-between; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Request Access</h1>
+    {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+    <form method="POST" action="{{ url_for('auth.register_page') }}">
+      <div>
+        <label for="username">Desired Username</label>
+        <input id="username" name="username" type="text" required />
+      </div>
+      <div>
+        <label for="email">Your Email</label>
+        <input id="email" name="email" type="email" required />
+      </div>
+      <div>
+        <label for="reason">Reason / Unit / Intended Use (optional)</label>
+        <textarea id="reason" name="reason" placeholder="Brief justification, unit, or supervisor POC (optional)"></textarea>
+      </div>
+      <div class="row">
+        <button type="submit">Submit Request</button>
+        <a class="btn" href="{{ url_for('core.home') }}">Back</a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
