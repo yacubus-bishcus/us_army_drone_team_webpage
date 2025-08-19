@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}UAS News – Skynet{% endblock %}
+{% block content %}
+<style>
+  .page{display:grid;grid-template-columns:1fr 360px;gap:1.25rem;align-items:start}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+  .card{border:1px solid #ddd;border-radius:12px;overflow:hidden;background:#fff}
+  .card img{width:100%;height:180px;object-fit:cover;display:block}
+  .card .body{padding:.75rem 1rem}
+  .sidebar{position:sticky;top:1rem;border:1px solid #ddd;border-radius:12px;padding:1rem;background:#fafafa}
+  .sidebar h3{margin:0 0 .5rem 0}
+  .field{display:flex;flex-direction:column;gap:.25rem;margin:.5rem 0}
+  .results{max-height:50vh;overflow:auto;margin-top:.75rem;border-top:1px solid #e5e5e5;padding-top:.75rem}
+  .wp{padding:.5rem 0;border-bottom:1px dashed #e2e2e2}
+  .wp small{display:block;opacity:.7}
+  .tags{font-size:.85rem;opacity:.85}
+  .upload{margin-top:1rem;border-top:1px solid #e5e5e5;padding-top:1rem}
+  @media (max-width:980px){.page{grid-template-columns:1fr}.sidebar{position:static}}
+</style>
+
+<div class="container">
+  <h1>UAS News Summary</h1>
+  <div class="page">
+    <section>
+      <div class="cards">
+        {% for n in news_items %}
+        <article class="card">
+          <img src="{{ n.image }}" alt="{{ n.title }}">
+          <div class="body">
+            <h3>{{ n.title }}</h3>
+            <p>{{ n.summary }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <h3>White Papers</h3>
+      <div class="field">
+        <label for="q">Search</label>
+        <input id="q" type="text" placeholder="Title, author, keywords">
+      </div>
+      <div class="field">
+        <label for="year">Year</label>
+        <select id="year">
+          <option value="">Any</option>
+          {% for y in years %}
+            <option value="{{ y }}">{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="tag">Tag</label>
+        <select id="tag">
+          <option value="">Any</option>
+          {% for t in tags %}
+            <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button id="searchBtn" type="button">Search</button>
+      <div id="results" class="results"></div>
+
+      <div class="upload">
+        <h3>Upload a White Paper (PDF)</h3>
+        <form action="{{ url_for('news.upload_whitepaper') }}" method="post" enctype="multipart/form-data">
+          <div class="field"><label>Title *</label><input name="title" required></div>
+          <div class="field"><label>Authors</label><input name="authors" placeholder="Last, First; Last, First"></div>
+          <div class="field"><label>Year</label><input name="year" type="number" min="1900" max="2100" step="1"></div>
+          <div class="field"><label>Tags</label><input name="tags" placeholder="counter-UAS, swarm, ISR"></div>
+          <div class="field"><label>Abstract</label><textarea name="abstract" rows="3"></textarea></div>
+          <div class="field"><label>PDF *</label><input name="file" type="file" accept="application/pdf" required></div>
+          <button type="submit">Upload</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  async function runSearch(){
+    const qs=new URLSearchParams({
+      q:document.getElementById('q').value.trim(),
+      year:document.getElementById('year').value,
+      tag:document.getElementById('tag').value
+    });
+    const res=await fetch(`{{ url_for('news.search_whitepapers') }}?`+qs.toString());
+    const data=await res.json();
+    const el=document.getElementById('results');
+    if(!data.length){el.innerHTML="<p>No results.</p>";return;}
+    el.innerHTML=data.map(d=>`
+      <div class="wp">
+        <strong>${d.title}</strong>
+        <small>${d.authors||'—'} • ${d.year||''}</small>
+        <div class="tags">${d.tags||''}</div>
+        <div><a href="${d.url}">Download PDF (${(d.filesize/1024/1024).toFixed(2)} MB)</a></div>
+      </div>`).join("");
+  }
+  document.getElementById('searchBtn').addEventListener('click', runSearch);
+  ['q','year','tag'].forEach(id=>document.getElementById(id).addEventListener('change', runSearch));
+</script>
+{% endblock %}
+

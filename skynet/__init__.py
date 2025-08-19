@@ -1,11 +1,13 @@
+# skynet/__init__.py
 from flask import Flask
 from pathlib import Path
 from .config import Config
-from .extensions import login_manager
+from .extensions import login_manager, db, migrate 
 from .db import init_users_db, seed_admin_user
 from .services.uas import create_csv_if_missing
 from .services.aars import create_aar_csv_if_missing
-import webbrowser
+import webbrowser, os 
+from urllib.parse import quote_plus 
 from threading import Timer
 from dotenv import load_dotenv
 
@@ -18,9 +20,20 @@ def create_app():
     app = Flask(__name__, template_folder="../templates", static_folder="../static")
     app.config.from_object(Config)
 
-    # Init extensions
-    login_manager.init_app(app)
+    # check to make sure instance directory exists 
+    os.makedirs(app.instance_path, exist_ok=True) 
+    # If DATABASE_URL wasn't provided, point sqlite to instance/
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///skynet.db"):
+        db_path = os.path.join(app.instance_path, "skynet.db")
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
 
+    from .extensions import db, migrate
+    db.init_app(app)
+    migrate.init_app(app, db)
+    from . import models  # ensure models are registered
+
+    # Init other extensions
+    login_manager.init_app(app)
     # Ensure data directories/files
     Path(app.config["DATA_DIR"]).mkdir(parents=True, exist_ok=True)
     init_users_db(app)         # SQLite tables + pending_users
@@ -29,6 +42,8 @@ def create_app():
     from .services.aars import create_aar_csv_if_missing, normalize_aar_csv_formats
     create_aar_csv_if_missing(app)  # AAR CSV
     normalize_aar_csv_formats(app) 
+
+    
     # Register blueprints
     from .blueprints.core import bp as core_bp
     from .blueprints.auth import bp as auth_bp
@@ -37,6 +52,8 @@ def create_app():
     from .blueprints.search import bp as search_bp
     from .blueprints.aars import bp as aars_bp
     from .blueprints.recommendations import bp as recs_bp
+    from .blueprints.news import news_bp
+    from .blueprints.software import software_bp 
     from .blueprints.profile import bp as profile_bp
 
     app.register_blueprint(core_bp)
@@ -46,6 +63,8 @@ def create_app():
     app.register_blueprint(search_bp)
     app.register_blueprint(aars_bp)
     app.register_blueprint(recs_bp)
+    app.register_blueprint(news_bp)
+    app.register_blueprint(software_bp)
     app.register_blueprint(profile_bp)
     
     # Global login wall (lets Home/Login/Register/Static through)

@@ -1,9 +1,34 @@
-Drone,Manufacturer,Country of Manufacture,Cost,Range (km),Endurance (min),Ceiling (ft),Payload (kg),Camera,Blue List,Blue List Select,Webpage Link,Image Link,Open Software ,Date Added to Blue List
-Red Dragon,AeroVironment,USA,,,,,,,Y,N,https://www.avinc.com/,,,08/04/25
-eBee Vision,AgEagle Aerial Systems,Switzerland ,,,,,,,Y,N,https://ageagle.com/,,,07/17/25
-eBee TAC,AgEagle Aerial Systems,Switzerland ,,,,,,,Y,N,https://ageagle.com/,,,07/25/22
-Ghost/Ghost-X,Anduril Industries,USA,,,,,,,Y,N,https://www.anduril.com/,,,05/30/24
-Spirit,Ascent AeroSystems,USA,,,,,,,Y,N,https://ascentaerosystems.com/,,,08/25/22
-Osprey,Easy Aerial,USA,,,,,,,Y,Y,https://www.easyaerial.com/,,,01/19/24
-VXE30 Stalker,Edge Autonomy,USA,,,,,,,Y,Y,https://edgeautonomy.io/,,,05/14/25
-C100,PDW,USA,unk,10,50-75,12000,4.5,Modular EO/IR Payloads,Y,Y,https://www.unmannedsystemstechnology.com/company/performance-drone-works-pdw/c100-heavy-lift-quadcopter/,,,01/19/24
+Drone,Manufacturer,Country,Cost ($),Range (km),Endurance (min),Speed (mph),Weight (lbs),Ceiling (ft),Payload (kg),Camera,Blue List,Blue List Select,Webpage Link,Image Link,Open Software ,Software,Date Added to Blue List,Mission,Launch Rate (min),Connectivity,Operating Temperature,Processor
+Red Dragon,AeroVironment,USA,,400,unk,54,45,unk,10,EO/IR,Y,N,https://www.avinc.com/,,Y,AVACORE,08/04/25,One way attack,4-5,,,
+eBee Vision,AgEagle Aerial Systems,Switzerland ,13500,20,90,28-50,4,16000,0,EO/IR,Y,N,https://ageagle.com/,,N,,07/17/25,Recon,3,"Wifi, bluetooth, 4G, LTE",-10 to 49,Qualcomm SDM660 2.2GHz / 1.843GHz
+eBee TAC,AgEagle Aerial Systems,Switzerland ,13500,unk,90,25-68,3.5,unk,0,EO/IR,Y,N,https://ageagle.com/,,N,,07/25/22,Recon,3,,-15 to 40,
+Ghost/Ghost-X,Anduril Industries,USA,,25,75,unk,55,unk,9,unk,Y,N,https://www.anduril.com/,,Y,Lattice OS,05/30/24,Hunter/Killer,,,,
+Spirit,Ascent AeroSystems,USA,15999,48,16-53,40-60,4.1,14600,3,EO/IR,Y,N,https://ascentaerosystems.com/,,Y,AscentQ,08/25/22,Hunter/Killer,,,-28 to 54,
+Osprey,Easy Aerial,USA,,unk,unk,unk,unk,unk,unk,unk,Y,Y,https://www.easyaerial.com/,,,,01/19/24,,,,,
+VXE30 Stalker,Edge Autonomy,USA,,160,480,35-58,49,15000,,EO/IR,Y,Y,https://edgeautonomy.io/,,,,05/14/25,,10,,,
+C100,PDW,USA,Quote,10,50-75,unk,unk,12000,4.5,Modular EO/IR Payloads,Y,Y,https://www.unmannedsystemstechnology.com/company/performance-drone-works-pdw/c100-heavy-lift-quadcopter/,,,,01/19/24,,,,,
+Edge 130,FlightWave Aerospace Systems,USA,,unk,30-125,24-65,2.65,12000,0.345,EO/IR,Y,Y,https://www.flightwave.aero/edge-130-blue,,,,01/19/24,Recon,1,,,
+Astro/Max,Freefly Systems,USA,,2,28-38,34,6.82,9022,3.3,EO/IR,Y,Y,,,Y,Auterion Enterprise PX4,05/29/24,Recon,,"BLE, Wifi, USB-C, LTE",-20 to 50,Freefly custom designed Skynode
+Alta X – Blue Package,Freefly Systems,USA,,unk,22-50,60,23.94,unk,15.06,EO/IR/LIDAR,Y,N,,,Y,Auterion Enterprise PX4,08/18/22,Hunter/Killer,,"BLE, Wifi, USB-C, LTE",-20 to 50,Freefly custom designed Skynode
+Hoverfly Spectre,Hoverfly Technologies,USA,,unk,20-40,10-25,7,330,3.6,Eo/IR/WAMI,Y,Y,,,Y,Hoverfly Software Development Kit,02/14/25,Hunter/Killer,10,tethered fiber optic,,
+IF800,Inspired Flight Technologies,USA,21900,unk,54,49,9.2,14100,2.99,EO/IR/LIDAR,Y,N,,,,Copter by Ardupilot,01/19/24,Hunter/Killer,,,-20 to 45,"CubePilot Cube Blue H7, Triple Redundant IMU"
+IF1200A,Inspired Flight Technologies,USA,31000,unk,43,56,17.2,12800,8.66,EO/IR/LIDAR,Y,N,,,,Copter by Ardupilot,01/19/24,Hunter/Killer,,,-20 to 45,"CubePilot Cube Blue H7, Triple Redundant IMU"
+K1000ULE,Kraus Hamdani Aerospace,USA,,unk,unk,unk,unk,unk,unk,unk,Y,N,,,,,08/04/25,,,,,
+Stinger Vision,ModalAI,USA,3399.99,11,12,unk,1.27,,unk,EO/IR,Y,N,,,,VOXL SDK,08/08/25,,1,,,"Qualcomm QRB5165, 8 cores"
+Seeker Vision/Max,ModalAI,USA,,unk,unk,unk,unk,unk,unk,unk,Y,Y,,,,,04/11/25,,,,,
+Talon DT-300,Mountain Horse Solutions,USA,,70,120,50,,16400,30,unk,Y,N,,,,,08/13/25,,,,,
+Archer,Neros Technology,USA,,unk,unk,unk,unk,unk,unk,unk,Y,Y,,,,,02/14/25,,,,,
+ANAFI UKR,Parrot,France,,23.1,38,38,2.11,16400,0.49,EO/IR,Y,Y,,,,,04/11/25,Recon,2,"5G, WIFI, MARS",,
+ANAFI USA GOV/MIL,Parrot,France,,17.4,32,33,1.1,16400,unk,EO/IR,Y,N,,,Y,ANAFI SDK,08/25/22,Recon,1,,-36 to 50,"Ambarella H22 processor, MPU-6000 Invensense IMU"
+Vector,Quantum Systems,USA,,60,180,34-45,21,13123,unk,EO/IR,Y,N,,,,,08/04/25,Recon,,WIFI,,2x NVIDIA Jetson Orin NX 
+V-BAT,Shield AI,USA,,139-1200,780,56,85,18000,18.1,"SAR, ViDAR, EO/IR",Y,N,,,Y,"EdgeOS, Hivemind AI pilot software",08/06/25,Hunter/Killer,,"SATCOM, AI, Radio",-40 to 50,
+X10D,Skydio,USA,,12,35-40,45,4.7,15000,0.35,EO/IR,Y,Y,https://www.skydio.com/x10d,,Y,Skydio,05/28/24,Recon,1,WIFI,-20 to 45,"NVIDIA Jetson Orin SoC, Qualcomm QRB5165 SoC"
+X2D,Skydio,USA,,10,35,31,2.92,11200,0.2,EO/IR,Y,Y,https://www.skydio.com/x2d,,Y,Skydio,02/28/23,Recon,,"USB, HDMI, WIFI",-10 to 43,NVIDIA Tegra X2 
+Perimeter 8,Skyfront,USA,,,,,,,,,Y,Y,,,,,05/12/25,,,,,
+Teal 2 ,Teal,USA,,,,,,,,,Y,N,,,,,01/19/24,,,,,
+Black Hornet 4,Teledyne FLIR,Norway,,,,,,,,,Y,Y,,,,,06/10/25,,,,,
+Trace,Vantage Robotics,USA,,,,,,,,,Y,Y,,,,,07/10/25,,,,,
+Vesper,Vantage Robotics,USA,,,,,,,,,Y,N,,,,,08/25/22,,,,,
+WingtraRAY,Wingtra,Switzerland ,,,,,,,,,Y,N,,,,,07/16/25,,,,,
+WingtraOne Gen II,Wingtra,Switzerland ,,,,,,,,,Y,N,,,,,08/25/22,,,,,
+Paladin,Zone 5 Technologies,USA,,,,,,,,,Y,Y,,,,,03/05/25,,,,,

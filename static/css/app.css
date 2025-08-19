@@ -1,0 +1,26 @@
+:root{
+    --radius:8px; --border:#bbb; --border-strong:#999; --bg:#fafafa; --muted:#eee;
+    --text:#222; --text-muted:#666; --nav-bg:#333; --nav-text:#fff; --nav-hover:#444;
+    --accent:#eaeaea;
+  }
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;color:var(--text);background:var(--bg)}
+  .container{width:92%;max-width:1200px;margin:2rem auto}
+  h1{margin:0 0 1rem;text-align:center}
+  
+  /* Global nav — make all tabs match this */
+  nav{background-color:var(--nav-bg);padding:.6rem 1rem}
+  nav ul{list-style:none;margin:0;padding:0;display:flex;gap:1rem;flex-wrap:wrap}
+  nav a{color:var(--nav-text);text-decoration:none;padding:.4rem .8rem;border-radius:var(--radius)}
+  nav a:hover{background-color:var(--nav-hover)}
+  
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+  .stack{display:grid;gap:1rem}
+  
+  /* Tables defaults (used across pages) */
+  .table-wrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--border)}
+  th,td{border:1px solid var(--border-strong);padding:10px;vertical-align:top}
+  th{background:var(--muted)}
+  .meta{color:var(--text-muted);font-size:.95rem}
+  

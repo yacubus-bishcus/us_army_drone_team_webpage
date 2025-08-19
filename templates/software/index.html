@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Software Database – Skynet{% endblock %}
+{% block content %}
+<style>
+  .links-section {
+    margin-top: 2rem;
+  }
+  .links-section h2 {
+    margin-bottom: 1rem;
+  }
+  .links-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .links-list a {
+    display: block;
+    padding: 0.6rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    text-decoration: none;
+    color: #222;
+    transition: background 0.2s;
+  }
+  .links-list a:hover {
+    background: #f5f5f5;
+  }
+</style>
+<div class="container stack"></div>
+  <h1>Software Database</h1>
+  <p>Browse and download community-shared CAD models and UAS software.</p>
+
+  <div class="cards">
+    <article class="card">
+      <h3>CAD Library</h3>
+      <p>Download 3D models (STEP, STL, SolidWorks) for frames, mounts, airframes, and components.</p>
+      <a href="{{ url_for('software.cad') }}">Open CAD Library</a>
+    </article>
+    <article class="card">
+      <h3>UAS Software</h3>
+      <p>Firmware, ground control tools, simulators, payload integrations, and scripts.</p>
+      <a href="{{ url_for('software.uas') }}">Open UAS Software</a>
+    </article>
+  </div>
+  <!-- Useful Links section -->
+  <div class="card links-section">
+    <h2>Useful Links</h2>
+    <div class="links-list">
+      <a href="https://github.com/" target="_blank">GitHub – Open Source Projects</a>
+      <a href="https://pypi.org/" target="_blank">PyPI – Python Packages</a>
+      <a href="https://flask.palletsprojects.com/" target="_blank">Flask Documentation</a>
+      <a href="https://developer.army.mil/" target="_blank">Army Developer Portal</a>
+      <a href="https://www.defense.gov/" target="_blank">U.S. DoD Official Site</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

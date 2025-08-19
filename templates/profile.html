@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Profile – Skynet{% endblock %}
+{% block content %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -30,22 +33,6 @@
   </style>
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="{{ url_for('core.home') }}">Home</a></li>
-      <li><a href="{{ url_for('search.search') }}">Search</a></li>
-      <li><a href="{{ url_for('compare.compare') }}">Comparison Tool</a></li>
-      <li><a href="{{ url_for('aars.submit_aar') }}">Submit AAR</a></li>
-      <li><a href="/submit-recommendations">Submit Recommendations</a></li>
-      <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
-      {% if current_user.is_authenticated %}
-        <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
-      {% else %}
-        <li><a href="{{ url_for('auth.login_page') }}">Login</a></li>
-        <li><a href="{{ url_for('auth.register_page') }}">Request Access</a></li>
-      {% endif %}
-    </ul>
-  </nav>
 
   <div class="container">
     <div class="alerts">
@@ -95,3 +82,4 @@
   </div>
 </body>
 </html>
+{% endblock %}

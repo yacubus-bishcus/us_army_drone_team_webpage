@@ -1,0 +1,16 @@
+<!-- skynet/templates/base.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}Skynet{% endblock %}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  {% include "partials/nav.html" %}
+  <main style="max-width:1200px;margin:0 auto;padding:1rem;">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

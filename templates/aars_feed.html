@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}AAR Feed – Skynet{% endblock %}
+{% block content %}
+<style>
+  .feed{max-width:900px;margin:0 auto}
+  .post{display:grid;grid-template-columns:48px 1fr;gap:.75rem;border:1px solid var(--border);border-radius:var(--radius);background:#fff;padding:.75rem}
+  .vote{display:flex;flex-direction:column;align-items:center;gap:.25rem}
+  .vote button{border:0;background:transparent;cursor:pointer;font-size:1.25rem;line-height:1}
+  .vote .score{font-weight:600}
+  .post .title{margin:.1rem 0 .35rem 0;font-size:1.1rem}
+  .post .meta{font-size:.85rem;opacity:.7;margin-bottom:.5rem}
+  .post .body{white-space:pre-wrap}
+  .comments{margin-top:.6rem;border-top:1px solid #eee;padding-top:.6rem}
+  .comment{padding:.4rem 0;border-bottom:1px dashed #eee}
+  .comment small{opacity:.7}
+  .comment-form{display:flex;gap:.5rem;margin-top:.5rem}
+  .comment-form textarea{flex:1}
+  .pager{display:flex;gap:.5rem;justify-content:center;margin-top:1rem}
+  .muted{opacity:.7}
+  .up.active{color:orangered}
+  .down.active{color:#4a6ee0}
+</style>
+
+<div class="container feed">
+  <h1>AAR Feed</h1>
+
+  <div class="stack">
+    {% for a in page.items %}
+    {% set myv = my_votes.get(a.id, 0) %}
+    <article class="post" id="aar-{{a.id}}">
+      <div class="vote" data-id="{{a.id}}">
+        <button class="up {{ 'active' if myv==1 else '' }}" title="Upvote">▲</button>
+        <div class="score" id="score-{{a.id}}">{{ a.score }}</div>
+        <button class="down {{ 'active' if myv==-1 else '' }}" title="Downvote">▼</button>
+      </div>
+      <div>
+        <h3 class="title">{{ a.title }}</h3>
+        <div class="meta">Posted {{ a.created_at.strftime('%Y-%m-%d %H:%M') }} • Score {{ a.score }} • {{ a.comments|length }} comment{{ '' if a.comments|length==1 else 's' }}</div>
+        <div class="body">{{ a.body }}</div>
+
+        <!-- Comments -->
+        <div class="comments">
+          {% for c in a.comments|sort(attribute='created_at') %}
+            <div class="comment">
+              <div>{{ c.body }}</div>
+              <small>by User {{ c.user_id }} • {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            </div>
+          {% endfor %}
+
+          <form class="comment-form" method="post" action="{{ url_for('aars.comment') }}">
+            <input type="hidden" name="aar_id" value="{{ a.id }}">
+            <textarea name="body" rows="2" placeholder="Add a comment..." required></textarea>
+            <button type="submit">Comment</button>
+          </form>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  <div class="pager">
+    {% if page.has_prev %}
+      <a class="btn" href="{{ url_for('aars.feed', page=page.prev_num) }}">← Prev</a>
+    {% else %}
+      <span class="btn muted">← Prev</span>
+    {% endif %}
+    <span class="btn muted">Page {{ page.page }} / {{ page.pages or 1 }}</span>
+    {% if page.has_next %}
+      <a class="btn" href="{{ url_for('aars.feed', page=page.next_num) }}">Next →</a>
+    {% else %}
+      <span class="btn muted">Next →</span>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function(){
+  async function sendVote(aarId, value){
+    const res = await fetch('{{ url_for("aars.vote") }}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ aar_id: aarId, value })
+    });
+    return await res.json();
+  }
+
+  document.querySelectorAll('.vote').forEach(box => {
+    const id = parseInt(box.dataset.id, 10);
+    const up = box.querySelector('.up');
+    const down = box.querySelector('.down');
+    const scoreEl = document.getElementById('score-' + id);
+
+    function setActive(userVote, score){
+      up.classList.toggle('active', userVote === 1);
+      down.classList.toggle('active', userVote === -1);
+      scoreEl.textContent = score;
+    }
+
+    up.addEventListener('click', async () => {
+      const currently = up.classList.contains('active') ? 1 : 0;
+      const value = currently === 1 ? 0 : 1; // toggle
+      const data = await sendVote(id, value);
+      if (data.ok) setActive(data.user_vote, data.score);
+    });
+
+    down.addEventListener('click', async () => {
+      const currently = down.classList.contains('active') ? -1 : 0;
+      const value = currently === -1 ? 0 : -1; // toggle
+      const data = await sendVote(id, value);
+      if (data.ok) setActive(data.user_vote, data.score);
+    });
+  });
+})();
+</script>
+{% endblock %}

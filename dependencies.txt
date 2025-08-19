@@ -2,3 +2,5 @@ pandas
 flask 
 flask-login
 python-dotenv
+flask_sqlalchemy
+flask_migrate

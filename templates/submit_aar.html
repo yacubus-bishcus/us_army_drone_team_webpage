@@ -1,219 +1,266 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Submit AAR — Skynet Database</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root { --radius: 8px; --border:#bbb; --border-strong:#999; --bg:#fafafa; --muted:#eee; --text:#222; --text-muted:#666; --nav-bg:#333; --nav-text:#fff; --nav-hover:#444; --card-bg:#fff; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; color: var(--text); background: var(--bg); }
-    .container { width: 92%; max-width: 1100px; margin: 2rem auto; }
-    h1 { text-align: center; margin: 0 0 1rem; }
-    nav { background-color: var(--nav-bg); padding: 0.6rem 1rem; }
-    nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap; }
-    nav a { color: var(--nav-text); text-decoration: none; padding: 0.4rem 0.8rem; border-radius: var(--radius); }
-    nav a:hover { background-color: var(--nav-hover); }
+{% extends "base.html" %}
+{% block title %}Submit AAR – Skynet{% endblock %}
+{% block content %}
+<style>
+  /* page-scoped styles only */
+  .container{width:92%;max-width:1100px;margin:2rem auto}
+  .stack{display:grid;gap:1rem}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
 
-    .stack { display: grid; gap: 1rem; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
-    .alerts { max-width: 900px; margin: 0.5rem auto 1rem; }
-    .alert { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 8px; text-align: center; }
-    .alert-success { background: #f0fff0; border-color: #b2e6b2; }
-    .alert-error { background: #fff0f0; border-color: #e6b2b2; }
+  .alerts{max-width:900px;margin:.5rem auto 1rem}
+  .alert{padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;text-align:center}
+  .alert-success{background:#f0fff0;border-color:#b2e6b2}
+  .alert-error{background:#fff0f0;border-color:#e6b2b2}
 
-    form.aar-form, form.filter-form { display: grid; gap: 12px; }
-    .row { display: grid; gap: 10px; }
-    .row.cols-2 { grid-template-columns: 2fr 1fr; }
-    .row.cols-3 { grid-template-columns: repeat(3, 1fr); }
-    .field label { font-size: 0.9rem; display: block; margin-bottom: 4px; color: var(--text); }
-    .field input, .field textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: white; }
-    .field textarea { min-height: 140px; resize: vertical; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn { padding: 10px 14px; border: 1px solid var(--border-strong); background: var(--muted); border-radius: var(--radius); cursor: pointer; text-decoration: none; color: inherit; }
-    .btn:hover { filter: brightness(0.97); }
+  form.aar-form, form.filter-form{display:grid;gap:12px}
+  .row{display:grid;gap:10px}
+  .row.cols-2{grid-template-columns:2fr 1fr}
+  .row.cols-3{grid-template-columns:repeat(3,1fr)}
+  .field label{font-size:.9rem;display:block;margin-bottom:4px}
+  .field input,.field textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:#fff}
+  .field textarea{min-height:140px;resize:vertical}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--muted);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:inherit}
+  .btn:hover{filter:brightness(.97)}
+  .meta{color:var(--text-muted);font-size:.9rem}
 
-    .aar-list { display: grid; gap: 10px; }
-    .aar-card { border: 1px solid var(--border-strong); border-radius: var(--radius); background: white; }
-    .aar-header { padding: 10px; background: var(--muted); border-bottom: 1px solid var(--border-strong); display: grid; grid-template-columns: 1fr; gap: 6px; }
-    .pills { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .aar-pill { font-size: 0.85rem; background: #eee; border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
-    .aar-body { padding: 10px; }
-    .meta { color: var(--text-muted); font-size: 0.9rem; }
-    details > summary { cursor: pointer; user-select: none; }
-  </style>
-</head>
-<body>
+  /* Reddit-like feed items */
+  .post{display:grid;grid-template-columns:48px 1fr;gap:.75rem;border:1px solid var(--border);border-radius:var(--radius);background:#fff;padding:.75rem}
+  .vote{display:flex;flex-direction:column;align-items:center;gap:.25rem}
+  .vote button{border:0;background:transparent;cursor:pointer;font-size:1.25rem;line-height:1}
+  .vote .score{font-weight:600}
+  .up.active{color:orangered}
+  .down.active{color:#4a6ee0}
 
-  <!-- Nav -->
-  <nav>
-    <ul>
-      <li><a href="/">Home</a></li>
-      <li><a href="/search">Search</a></li>
-      <li><a href="/compare">Comparison Tool</a></li>
-      <li><a href="/submit-aar">Submit AAR</a></li>
-      <li><a href="/submit-recommendations">Submit Recommendations</a></li>
-      <li><a href="/profile">Profile</a></li>
-    </ul>
-  </nav>
+  .post .hdr{display:flex;flex-wrap:wrap;gap:.5rem .5rem;align-items:center;margin-bottom:.25rem}
+  .pill{font-size:.85rem;background:#eee;border:1px solid var(--border);border-radius:999px;padding:4px 10px}
+  .titleline{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+  .titleline .meta{margin-left:auto}
 
-  <div class="container stack">
-    <h1>Submit After Action Report (AAR)</h1>
+  .post details>summary{cursor:pointer;user-select:none}
+  .post .body{white-space:pre-wrap;margin-top:8px}
 
-    <div class="alerts">
-      {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
-      {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
-    </div>
+  .comments{margin-top:.6rem;border-top:1px solid #eee;padding-top:.6rem}
+  .comment{padding:.4rem 0;border-bottom:1px dashed #eee}
+  .comment small{opacity:.7}
+  .comment-form{display:flex;gap:.5rem;margin-top:.5rem}
+  .comment-form textarea{flex:1}
+</style>
 
-    <!-- AAR Form -->
-    <div class="card">
-      <form class="aar-form" action="/submit-aar" method="POST" enctype="multipart/form-data">
-        <div class="row cols-2">
-          <div class="field">
-            <label for="unit">Unit*</label>
-            <input id="unit" name="unit" type="text" placeholder="e.g., 1-101 AVN (ARB)" required />
-          </div>
-          <div class="field">
-            <label for="training_date">Training date</label>
-            <input id="training_date" name="training_date" type="date" />
-          </div>
-        </div>
+<div class="container stack">
+  <h1>Submit After Action Report (AAR)</h1>
 
-        <div class="row">
-          <div class="field">
-            <label for="drones">Drones involved</label>
-            <input id="drones" name="drones" type="text" placeholder="e.g., MQ-1C, RQ-7B, Raven" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="field">
-            <label for="tags">Tags (comma or semicolon separated)</label>
-            <input id="tags" name="tags" type="text" placeholder="e.g., night, EW, maritime, ULI" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="field">
-            <label for="report">Report*</label>
-            <textarea id="report" name="report" placeholder="Concise narrative. Include objectives, scenario, execution, results, lessons learned, and recommendations." required></textarea>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="field">
-            <label for="attachment">Attachment (pdf, txt, docx, png, jpg)</label>
-            <input id="attachment" name="attachment" type="file" />
-          </div>
-        </div>
-
-        <div class="actions">
-          <button class="btn" type="submit">Submit AAR</button>
-          <a class="btn" href="/submit-aar">Reset</a>
-        </div>
-        {% if logged_in %}
-          <p class="meta">Logged in as <strong>{{ logged_in }}</strong></p>
-        {% else %}
-          <p class="meta">Not logged in — submissions will be attributed to <strong>anonymous</strong>. Use the Home page login to set a username.</p>
-        {% endif %}
-      </form>
-    </div>
-
-    <!-- Filters + Export -->
-    <div class="card">
-      <form class="filter-form" action="/submit-aar" method="GET" id="filtersForm">
-        <div class="row cols-3">
-          <div class="field">
-            <label for="f_unit">Unit (contains)</label>
-            <input id="f_unit" name="unit" type="text" value="{{ filters.unit }}" />
-          </div>
-          <div class="field">
-            <label for="f_drones">Drones (contains)</label>
-            <input id="f_drones" name="drones" type="text" value="{{ filters.drones }}" />
-          </div>
-          <div class="field">
-            <label for="f_tags">Tags (contains)</label>
-            <input id="f_tags" name="tags" type="text" value="{{ filters.tags }}" />
-          </div>
-        </div>
-
-        <div class="row cols-3">
-          <div class="field">
-            <label for="f_date_from">Date from</label>
-            <input id="f_date_from" name="date_from" type="date" value="{{ filters.date_from }}" />
-          </div>
-          <div class="field">
-            <label for="f_date_to">Date to</label>
-            <input id="f_date_to" name="date_to" type="date" value="{{ filters.date_to }}" />
-          </div>
-          <div class="field">
-            <label for="f_username">Username (contains)</label>
-            <input id="f_username" name="username" type="text" value="{{ filters.username }}" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="field">
-            <label>
-              <input type="checkbox" name="mine_only" value="1" {% if filters.mine_only in ["1","true","on"] %}checked{% endif %} />
-              Show only my AARs
-            </label>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button class="btn" type="submit">Apply Filters</button>
-          <a class="btn" href="/submit-aar">Reset</a>
-          <a class="btn" id="exportBtn" href="{{ export_url }}">Export CSV</a>
-        </div>
-      </form>
-    </div>
-
-    <!-- AAR List -->
-    <div class="card">
-      <h2 style="margin-top:0;">AARs</h2>
-      {% if aars and aars|length > 0 %}
-        <div class="aar-list">
-          {% for a in aars %}
-            <div class="aar-card">
-              <div class="aar-header">
-                <div class="pills">
-                  <span class="aar-pill"><strong>Unit:</strong> {{ a.unit or "N/A" }}</span>
-                  <span class="aar-pill"><strong>Drones:</strong> {{ a.drones or "N/A" }}</span>
-                  <span class="aar-pill"><strong>Date:</strong> {{ a.training_date or "N/A" }}</span>
-                  <span class="aar-pill"><strong>By:</strong> {{ a.username or "anonymous" }}</span>
-                  {% if a.tags %}<span class="aar-pill"><strong>Tags:</strong> {{ a.tags }}</span>{% endif %}
-                  {% if a.attachment %}<span class="aar-pill"><a href="/files/aar/{{ a.attachment }}">Attachment</a></span>{% endif %}
-                </div>
-                <div class="meta">Submitted: {{ a.created_at }}</div>
-              </div>
-              <div class="aar-body">
-                <details>
-                  <summary><strong>Summary:</strong> {{ a.summary or "(no summary)" }} &nbsp;&nbsp;<em class="meta">(click to expand full report)</em></summary>
-                  <div style="margin-top:8px; white-space:pre-wrap;">{{ a.report }}</div>
-                </details>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="meta" style="margin:0;">No AARs found for current filters.</p>
-      {% endif %}
-    </div>
-
+  <div class="alerts">
+    {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
   </div>
 
-  <script>
-    // Keep Export CSV link synced with filters
-    const f = document.getElementById('filtersForm');
-    const exportBtn = document.getElementById('exportBtn');
-    function syncExport() {
-      const params = new URLSearchParams(new FormData(f));
-      exportBtn.href = '/submit-aar/export?' + params.toString();
+  <!-- AAR Form -->
+  <div class="card">
+    <form class="aar-form" action="/submit-aar" method="POST" enctype="multipart/form-data">
+      <div class="row cols-2">
+        <div class="field">
+          <label for="unit">Unit*</label>
+          <input id="unit" name="unit" type="text" placeholder="e.g., 1-101 AVN (ARB)" required />
+        </div>
+        <div class="field">
+          <label for="training_date">Training date</label>
+          <input id="training_date" name="training_date" type="date" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="drones">Drones involved</label>
+          <input id="drones" name="drones" type="text" placeholder="e.g., MQ-1C, RQ-7B, Raven" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="tags">Tags (comma or semicolon separated)</label>
+          <input id="tags" name="tags" type="text" placeholder="e.g., night, EW, maritime, ULI" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="report">Report*</label>
+          <textarea id="report" name="report" placeholder="Concise narrative. Include objectives, scenario, execution, results, lessons learned, and recommendations." required></textarea>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="attachment">Attachment (pdf, txt, docx, png, jpg)</label>
+          <input id="attachment" name="attachment" type="file" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="submit">Submit AAR</button>
+        <a class="btn" href="/submit-aar">Reset</a>
+      </div>
+      {% if logged_in %}
+        <p class="meta">Logged in as <strong>{{ logged_in }}</strong></p>
+      {% else %}
+        <p class="meta">Not logged in — submissions will be attributed to <strong>anonymous</strong>. Use the Home page login to set a username.</p>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Filters + Export -->
+  <div class="card">
+    <form class="filter-form" action="/submit-aar" method="GET" id="filtersForm">
+      <div class="row cols-3">
+        <div class="field">
+          <label for="f_unit">Unit (contains)</label>
+          <input id="f_unit" name="unit" type="text" value="{{ filters.unit }}" />
+        </div>
+        <div class="field">
+          <label for="f_drones">Drones (contains)</label>
+          <input id="f_drones" name="drones" type="text" value="{{ filters.drones }}" />
+        </div>
+        <div class="field">
+          <label for="f_tags">Tags (contains)</label>
+          <input id="f_tags" name="tags" type="text" value="{{ filters.tags }}" />
+        </div>
+      </div>
+
+      <div class="row cols-3">
+        <div class="field">
+          <label for="f_date_from">Date from</label>
+          <input id="f_date_from" name="date_from" type="date" value="{{ filters.date_from }}" />
+        </div>
+        <div class="field">
+          <label for="f_date_to">Date to</label>
+          <input id="f_date_to" name="date_to" type="date" value="{{ filters.date_to }}" />
+        </div>
+        <div class="field">
+          <label for="f_username">Username (contains)</label>
+          <input id="f_username" name="username" type="text" value="{{ filters.username }}" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>
+            <input type="checkbox" name="mine_only" value="1" {% if filters.mine_only in ["1","true","on"] %}checked{% endif %} />
+            Show only my AARs
+          </label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="submit">Apply Filters</button>
+        <a class="btn" href="/submit-aar">Reset</a>
+        <a class="btn" id="exportBtn" href="{{ export_url }}">Export CSV</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- AAR Feed (with votes & comments) -->
+  <div class="card">
+    <h2 style="margin-top:0;">AARs</h2>
+    {% if aars and aars|length > 0 %}
+      <div class="stack">
+        {% for a in aars %}
+        {% set aid = a[id_col] if id_col in a else loop.index0 %}
+        {% set myv = my_votes.get(aid, 0) %}
+        <article class="post" id="aar-{{ aid }}">
+          <div class="vote" data-id="{{ aid }}">
+            <button class="up {{ 'active' if myv==1 else '' }}" title="Upvote">▲</button>
+            <div class="score" id="score-{{ aid }}">{{ scores.get(aid, 0) }}</div>
+            <button class="down {{ 'active' if myv==-1 else '' }}" title="Downvote">▼</button>
+          </div>
+          <div>
+            <div class="hdr">
+              <span class="pill"><strong>Unit:</strong> {{ a.unit or "N/A" }}</span>
+              <span class="pill"><strong>Drones:</strong> {{ a.drones or "N/A" }}</span>
+              <span class="pill"><strong>Date:</strong> {{ a.training_date or "N/A" }}</span>
+              <span class="pill"><strong>By:</strong> {{ a.username or "anonymous" }}</span>
+              {% if a.tags %}<span class="pill"><strong>Tags:</strong> {{ a.tags }}</span>{% endif %}
+              {% if a.attachment %}<span class="pill"><a href="/files/aar/{{ a.attachment }}">Attachment</a></span>{% endif %}
+            </div>
+
+            <div class="titleline">
+              <strong>Summary:</strong>
+              <span>{{ a.summary or "(no summary)" }}</span>
+              <span class="meta">Submitted: {{ a.created_at }}</span>
+            </div>
+
+            <details>
+              <summary><em class="meta">(click to expand full report)</em></summary>
+              <div class="body">{{ a.report }}</div>
+            </details>
+
+            <!-- Comments -->
+            <div class="comments">
+              {% for c in comments_by_aar.get(aid, []) %}
+                <div class="comment">
+                  <div>{{ c.body }}</div>
+                  <small>by {{ c.user }} • {{ c.created_at }}</small>
+                </div>
+              {% endfor %}
+              <form class="comment-form" method="post" action="{{ url_for('aars.comment_aar') }}">
+                <input type="hidden" name="aar_id" value="{{ aid }}">
+                <textarea name="body" rows="2" placeholder="Add a comment..." required></textarea>
+                <button type="submit">Comment</button>
+              </form>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="meta" style="margin:0;">No AARs found for current filters.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  (function(){
+    async function sendVote(aarId, value){
+      const res = await fetch('{{ url_for("aars.vote_aar") }}', {
+        method: 'POST',
+        credentials: 'same-origin',      // send session cookie
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aar_id: String(aarId), value })
+      });
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) { location.reload(); return { ok:false }; }
+      if (!res.ok) { console.error('Vote HTTP error', res.status, await res.text()); return { ok:false }; }
+      return await res.json();
     }
-    f.addEventListener('input', syncExport);
-    f.addEventListener('change', syncExport);
-    syncExport();
-  </script>
-</body>
-</html>
+
+    document.querySelectorAll('.vote').forEach(box => {
+      const id = box.dataset.id;
+      const up = box.querySelector('.up');
+      const down = box.querySelector('.down');
+      const scoreEl = document.getElementById('score-' + id);
+
+      function setActive(userVote, score){
+        up.classList.toggle('active', userVote === 1);
+        down.classList.toggle('active', userVote === -1);
+        scoreEl.textContent = score;
+      }
+
+      up.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const on = up.classList.contains('active');
+        const data = await sendVote(id, on ? 0 : 1);
+        if (data && data.ok) setActive(data.user_vote, data.score);
+      });
+
+      down.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const on = down.classList.contains('active');
+        const data = await sendVote(id, on ? 0 : -1);
+        if (data && data.ok) setActive(data.user_vote, data.score);
+      });
+    });
+  })();
+</script>
+
+
+{% endblock %}

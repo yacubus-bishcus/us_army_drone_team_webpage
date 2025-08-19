@@ -4,6 +4,8 @@ from pathlib import Path
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///skynet.db")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     BASE_DIR   = Path(__file__).resolve().parent.parent
     DATA_DIR   = os.getenv("DATA_DIR", str(BASE_DIR / "data"))
 
@@ -26,6 +28,9 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SECURE = True    # HTTPS only in prod
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 days (seconds)
+
+    # Content Restrictions 
+    MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25 MB upload cap
 
 # ========== Secret Validation ==========
 def validate_required_env():

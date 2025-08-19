@@ -1,0 +1,50 @@
+<div class="grid2">
+    {% for u in selected %}
+    <article class="card">
+      <h2 style="margin-top:0">{{ u.name }}</h2>
+  
+      {# Example sections; adjust keys to your data shape #}
+      <div class="spec">
+        <h4>Company</h4>
+        <p>{{ u.company or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Range</h4>
+        <p>{{ u.range or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Endurance</h4>
+        <p>{{ u.endurance or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Ceiling</h4>
+        <p>{{ u.ceiling or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Payload Capacity</h4>
+        <p>{{ u.payload_capacity or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Camera System</h4>
+        <p>{{ u.camera_system or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Max Speed</h4>
+        <p>{{ u.max_speed or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Weight</h4>
+        <p>{{ u.weight or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Price</h4>
+        <p>{{ u.price or '—' }}</p>
+      </div>
+      <div class="spec">
+        <h4>Notes</h4>
+        <p>{{ u.notes or '—' }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  

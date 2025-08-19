@@ -1,0 +1,33 @@
+<table class="compare">
+    <thead>
+      <tr>
+        <th>Spec</th>
+        {% for u in selected %}
+          <th>{{ u.name }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% set rows = [
+        ('Company', 'company'),
+        ('Range', 'range'),
+        ('Endurance', 'endurance'),
+        ('Ceiling', 'ceiling'),
+        ('Payload Capacity', 'payload_capacity'),
+        ('Camera System', 'camera_system'),
+        ('Max Speed', 'max_speed'),
+        ('Weight', 'weight'),
+        ('Price', 'price'),
+        ('Notes', 'notes'),
+      ] %}
+      {% for label, key in rows %}
+        <tr>
+          <th>{{ label }}</th>
+          {% for u in selected %}
+            <td>{{ u[key] if key in u and u[key] else '—' }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  

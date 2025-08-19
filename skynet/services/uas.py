@@ -2,11 +2,74 @@ from pathlib import Path
 import pandas as pd
 import re
 
-COLUMNS = ["name", "range_km", "endurance_hr", "ceiling_m", "payload_kg"]
-NUMERIC_FIELDS = ["range_km", "endurance_hr", "ceiling_m", "payload_kg"]
+# canonical schema used by the app
+COLUMNS = [
+    "name",
+    "manufacturer",
+    "country",
+    "price",
+    "range_km",
+    "endurance_min",
+    "speed_mph",
+    "weight_lbs",
+    "ceiling_ft",
+    "payload_kg",
+    "camera_system",
+    "blue_list",
+    "blue_list_select",
+    "webpage",
+    "picture",
+    "open_software",
+    "software",
+    "date_added",
+    "mission",
+    "launch_rate_min",
+    "connect",
+    "op_temp",
+    "processor"
+]
+
+NUMERIC_FIELDS = [
+    "price",
+    "range_km",
+    "endurance_min",
+    "speed_mph",
+    "weight_lbs",
+    "ceiling_ft",
+    "payload_kg",
+    "launch_rate_min"
+]
+
+# map *lowercased csv headers --> canonical names 
+COLUMN_ALIASES = {
+    "drone": "name",
+    "manufacturer": "manufacturer",
+    "country": "country",
+    "cost ($)": "price",
+    "range (km)": "range_km",
+    "endurance (min)": "endurance_min",
+    "speed (mph)": "speed_mph",
+    "weight (lbs)": "weight_lbs",
+    "ceiling (ft)": "ceiling_ft",
+    "payload (kg)": "payload_kg",
+    "camera": "camera_system",
+    "blue list": "blue_list",
+    "blue list select": "blue_list_select",
+    "webpage link": "webpage",
+    "image link": "picture",
+    "open software": "open_software",
+    "software": "software",
+    "date added to blue list": "date_added",
+    "mission": "mission",
+    "launch rate (min)": "launch_rate_min",
+    "connectivity": "connect",
+    "operating temperature": "op_temp",
+    "processor": "processor"
+}
+
 
 def data_dir(app): return Path(app.config["DATA_DIR"])
-def data_path(app): return data_dir(app) / "uas_data.csv"
+def data_path(app): return data_dir(app) / "blue_list_data.csv"
 
 def create_csv_if_missing(app):
     p = data_path(app)
@@ -22,11 +85,31 @@ def create_csv_if_missing(app):
         pd.DataFrame(seed)[COLUMNS].to_csv(p, index=False)
 
 def load_uas(app):
-    p = data_path(app)
-    if not p.exists(): create_csv_if_missing(app)
+    import pandas as pd
+    from pathlib import Path
+
+    p = Path(app.config.get("DATA_DIR", app.instance_path)) / "blue_list_data.csv"
     df = pd.read_csv(p)
-    df = df[[c for c in COLUMNS if c in df.columns]]
+
+    # normalize headers
+    rename_map = {}
+    for c in df.columns:
+        key = c.strip().lower()
+        if key in COLUMN_ALIASES:
+            rename_map[c] = COLUMN_ALIASES[key]
+    df = df.rename(columns=rename_map)
+
+    # make sure all expected columns exist
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
+
+    # convert numeric fields
+    for col in NUMERIC_FIELDS:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
     return df
+
 
 def append_uas(app, row: dict):
     create_csv_if_missing(app)

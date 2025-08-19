@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ 'CAD Library' if category=='cad' else 'UAS Software' }} – Skynet{% endblock %}
+{% block content %}
+<style>
+  .page { display:grid; grid-template-columns: 1fr 320px; gap:1rem; align-items:start; }
+  .tabs { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom: .5rem; }
+  .tab { padding:.4rem .7rem; border:1px solid #ddd; border-radius: 999px; text-decoration:none; }
+  .tab.active { background:#111; color:#fff; border-color:#111; }
+  .filters { border:1px solid #e1e1e1; border-radius:12px; padding:1rem; background:#fff; position:sticky; top:1rem; }
+  .filters .field { display:flex; flex-direction:column; gap:.3rem; margin:.4rem 0; }
+  .results { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .8rem; }
+  .item { border:1px solid #e1e1e1; border-radius:12px; background:#fff; overflow:hidden; display:flex; flex-direction:column; }
+  .item .body { padding:.8rem .9rem; flex:1; }
+  .item h4 { margin:.1rem 0 .45rem; }
+  .meta { font-size:.9rem; opacity:.8; }
+  .tags { font-size:.85rem; opacity:.9; margin-top:.35rem; }
+  .item .actions { padding:.75rem .9rem; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+  .muted { opacity:.7; }
+  @media (max-width: 980px) { .page { grid-template-columns: 1fr; } .filters{ position:static; } }
+</style>
+
+<h1>{{ 'CAD Library' if category=='cad' else 'UAS Software' }}</h1>
+
+<div class="page">
+  <section>
+    <!-- Quick filetype tabs -->
+    <div class="tabs" id="quickTabs"></div>
+
+    <!-- Search results -->
+    <div id="results" class="results"></div>
+  </section>
+
+  <aside class="filters">
+    <h3>Filters</h3>
+    <div class="field">
+      <label for="q">Search</label>
+      <input id="q" type="text" placeholder="Name, description, tags">
+    </div>
+    <div class="field">
+      <label for="filetype">Filetype</label>
+      <select id="filetype">
+        <option value="">Any</option>
+        {% for ft in filetypes %}
+        <option value="{{ ft }}">{{ ft }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="tag">Tag</label>
+      <select id="tag">
+        <option value="">Any</option>
+        {% for t in tags %}
+        <option value="{{ t }}">{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button id="searchBtn" type="button">Apply</button>
+    <p class="muted" style="margin-top:.6rem;">Tip: use the top tabs for quick filetype filtering.</p>
+  </aside>
+</div>
+
+<script>
+(function () {
+  const category = "{{ category }}";
+  const resultsEl = document.getElementById('results');
+  const qEl = document.getElementById('q');
+  const filetypeEl = document.getElementById('filetype');
+  const tagEl = document.getElementById('tag');
+  const tabsEl = document.getElementById('quickTabs');
+
+  // Build top "filetype tabs" from server-provided list
+  const serverFileTypes = [{% for ft in filetypes %}"{{ ft }}",{% endfor %}];
+  const topTabs = serverFileTypes.length ? ["All"].concat(serverFileTypes) : ["All"];
+  tabsEl.innerHTML = topTabs.map(ft => {
+    const val = ft === "All" ? "" : ft;
+    return `<a href="#" class="tab" data-ft="${val}">${ft}</a>`;
+  }).join("");
+
+  function setActiveTab(val) {
+    [...tabsEl.querySelectorAll('.tab')].forEach(a => {
+      a.classList.toggle('active', a.dataset.ft === val);
+    });
+  }
+  tabsEl.addEventListener('click', (e) => {
+    if (e.target.matches('.tab')) {
+      e.preventDefault();
+      const val = e.target.dataset.ft;
+      filetypeEl.value = val;  // sync side filter
+      setActiveTab(val);
+      runSearch();
+    }
+  });
+  setActiveTab("");
+
+  async function runSearch() {
+    const qs = new URLSearchParams({
+      category,
+      q: qEl.value.trim(),
+      filetype: filetypeEl.value,
+      tag: tagEl.value
+    });
+    const res = await fetch(`{{ url_for('software.search') }}?` + qs.toString());
+    const data = await res.json();
+    if (!data.length) {
+      resultsEl.innerHTML = `<p class="muted">No files found. Try a different filter.</p>`;
+      return;
+    }
+    resultsEl.innerHTML = data.map(d => `
+      <article class="item">
+        <div class="body">
+          <h4>${d.name}</h4>
+          <div class="meta">
+            ${d.filetype || '—'} ${d.version ? ' • v' + d.version : ''} ${d.license ? ' • ' + d.license : ''}
+          </div>
+          <p>${d.description || ''}</p>
+          <div class="tags">${d.tags}</div>
+        </div>
+        <div class="actions">
+          <span class="muted">${d.filesize_mb} MB</span>
+          <a href="${d.download_url}">Download</a>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  document.getElementById('searchBtn').addEventListener('click', runSearch);
+  qEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
+
+  // Initial load
+  runSearch();
+})();
+</script>
+{% endblock %}

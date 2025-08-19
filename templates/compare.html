@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Comparison Tool – Skynet{% endblock %}
+{% block content %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -20,6 +23,7 @@
       --nav-bg: #333;
       --nav-text: #fff;
       --nav-hover: #444;
+      --card-bg: #fff;
     }
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; color: var(--text); background: var(--bg); }
@@ -37,10 +41,32 @@
     .alert-success { background: var(--success-bg); border-color: var(--success-brd); }
     .alert-error { background: var(--error-bg); border-color: var(--error-brd); }
 
-    .card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
     .stack { display: grid; gap: 1rem; }
 
-    /* Form */
+    /* Toolbar / selector */
+    .toolbar { display:flex; gap:.75rem; align-items:center; margin:.75rem 0 1rem; flex-wrap:wrap; justify-content: space-between; }
+    .mode { display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:#fff; }
+    .mode a { padding:.5rem .9rem; text-decoration:none; color:inherit; border-right:1px solid var(--border); }
+    .mode a:last-child { border-right:0; }
+    .mode a.active { background:#111; color:#fff; }
+    .picker { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+    .picker select { min-width:260px; max-width:420px; height:9.5rem; }
+    .hint { font-size:.9rem; opacity:.8; }
+
+    /* Split view */
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; }
+    .spec { margin:.5rem 0; }
+    .spec h4 { margin:0 0 .2rem 0; font-size:.95rem; opacity:.75; }
+    .spec p { margin:.1rem 0 0 0; }
+
+    /* Table comparison */
+    .table-wrap { overflow-x: auto; }
+    table.compare { border-collapse: collapse; width: 100%; background: white; border: 1px solid var(--border); }
+    table.compare th, table.compare td { border: 1px solid var(--border-strong); padding: 10px; vertical-align: top; text-align: left; }
+    table.compare th { background-color: var(--muted); }
+
+    /* Admin/add form table */
     form.add-form {
       display: grid;
       grid-template-columns: repeat(5, 1fr) auto;
@@ -64,31 +90,14 @@
     }
     .actions button:hover, table button:hover { filter: brightness(0.97); }
 
-    /* Table */
-    .table-wrap { overflow-x: auto; }
-    table { border-collapse: collapse; width: 100%; background: white; border: 1px solid var(--border); }
-    th, td { border: 1px solid var(--border-strong); padding: 10px; text-align: center; }
-    th { background-color: var(--muted); }
-    .footnote { color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; text-align: center; }
-
     @media (max-width: 1000px) {
       form.add-form { grid-template-columns: 1fr 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+      .picker select { height: 8.5rem; }
     }
   </style>
 </head>
 <body>
-
-  <!-- Navigation Menu -->
-  <nav>
-    <ul>
-      <li><a href="/">Home</a></li>
-      <li><a href="/search">Search</a></li>
-      <li><a href="/compare">Comparison Tool</a></li>
-      <li><a href="/submit-aar">Submit AAR</a></li>
-      <li><a href="/submit-recommendations">Submit Recommendations</a></li>
-      <li><a href="/profile">Profile</a></li>
-    </ul>
-  </nav>
 
   <div class="container stack">
 
@@ -103,7 +112,147 @@
       {% endif %}
     </div>
 
-    <!-- Add UAS Form -->
+    {# -------------------------- #
+       Comparison UI (NEW)
+       - Select UAS by name (names are unique)
+       - mode: split | table | auto (query param)
+       -------------------------- #}
+
+    {% set qs_mode = request.args.get('mode', 'auto') %}
+    {% set selected_names = request.args.getlist('name') %}
+    {% set selected_count = selected_names|length %}
+    {% set effective_mode = 'split' if qs_mode == 'split' or (qs_mode == 'auto' and selected_count == 2) else ('table' if (qs_mode in ['table','auto'] and selected_count != 2 and selected_count >= 2) else 'none') %}
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="mode">
+          {# keep selection when switching modes #}
+          <a href="{{ url_for('compare.compare', mode='split', **{'name': selected_names}) }}"
+             class="{{ 'active' if effective_mode == 'split' else '' }}">Split View</a>
+          <a href="{{ url_for('compare.compare', mode='table', **{'name': selected_names}) }}"
+             class="{{ 'active' if effective_mode == 'table' else '' }}">Table View</a>
+        </div>
+
+        <form class="picker" method="get" action="{{ url_for('compare.compare') }}">
+          <input type="hidden" name="mode" value="{{ qs_mode }}">
+          <label for="sel"><strong>Select UAS</strong></label>
+          <select id="sel" name="name" multiple aria-label="Select UAS to compare">
+            {% for row in uas_list %}
+              {% set n = row['name'] %}
+              <option value="{{ n }}" {% if n in selected_names %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Apply Selection</button>
+          <div class="hint">
+            Split View: select exactly 2. &nbsp; Table View: select 2 or more.
+          </div>
+        </form>
+      </div>
+
+      {# -------- SPLIT VIEW (exactly two) -------- #}
+      {% if effective_mode == 'split' and selected_count == 2 %}
+        <div class="grid2">
+          {% for who in selected_names %}
+            {% for row in uas_list if row['name'] == who %}
+              <article class="card" style="margin:0;">
+                <h2 style="margin-top:0">{{ row['name'] }}</h2>
+
+                <div class="spec">
+                  <h4>Company</h4>
+                  <p>{{ row.get('company','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Range (km)</h4>
+                  <p>{{ row.get('range_km','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Endurance (hr)</h4>
+                  <p>{{ row.get('endurance_hr','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Ceiling (m)</h4>
+                  <p>{{ row.get('ceiling_m','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Payload (kg)</h4>
+                  <p>{{ row.get('payload_kg','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Camera System</h4>
+                  <p>{{ row.get('camera_system','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Max Speed</h4>
+                  <p>{{ row.get('max_speed','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Weight</h4>
+                  <p>{{ row.get('weight','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Price</h4>
+                  <p>{{ row.get('price','—') }}</p>
+                </div>
+                <div class="spec">
+                  <h4>Notes</h4>
+                  <p>{{ row.get('notes','—') }}</p>
+                </div>
+              </article>
+            {% endfor %}
+          {% endfor %}
+        </div>
+
+      {# -------- TABLE VIEW (2 or more) -------- #}
+      {% elif effective_mode == 'table' and selected_count >= 2 %}
+        <div class="table-wrap">
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Spec</th>
+                {% for who in selected_names %}
+                  <th>{{ who }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% set rows = [
+                ('Company', 'company'),
+                ('Range (km)', 'range_km'),
+                ('Endurance (hr)', 'endurance_hr'),
+                ('Ceiling (m)', 'ceiling_m'),
+                ('Payload (kg)', 'payload_kg'),
+                ('Camera System', 'camera_system'),
+                ('Max Speed', 'max_speed'),
+                ('Weight', 'weight'),
+                ('Price', 'price'),
+                ('Notes', 'notes')
+              ] %}
+              {% for label, key in rows %}
+                <tr>
+                  <th>{{ label }}</th>
+                  {% for who in selected_names %}
+                    {% set cell = '—' %}
+                    {% for row in uas_list if row['name'] == who %}
+                      {% set cell = row.get(key, '—') %}
+                    {% endfor %}
+                    <td>{{ cell }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      {% else %}
+        <p class="hint" style="margin:.5rem 0 0 0;">
+          Select UAS and choose a mode to begin (Split View needs exactly two).
+        </p>
+      {% endif %}
+    </div>
+
+    {# -------------------------- #
+       Your existing "Add UAS" form
+       -------------------------- #}
     <div class="card">
       <form class="add-form" action="/add" method="POST">
         <div class="field">
@@ -133,7 +282,9 @@
       <p class="footnote">* Name must be unique (case-insensitive).</p>
     </div>
 
-    <!-- Data Table -->
+    {# -------------------------- #
+       Your existing "Data Table"
+       -------------------------- #}
     <div class="card table-wrap">
       <table>
         <thead>
@@ -165,3 +316,4 @@
   </div>
 </body>
 </html>
+{% endblock %}
