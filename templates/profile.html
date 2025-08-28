@@ -69,6 +69,10 @@
       <!-- Suggestions / future settings -->
       <div class="card">
         <h2 style="margin-top:0;">Settings & Suggestions</h2>
+        <!-- Added recommendations link here-->
+        <p>
+          <a class="btn" href="{{ url_for('recommendations.submit') }}">Submit Recommendations</a>
+        </p>
         <ul class="meta" style="margin:0 0 10px 16px;">
           <li>Email address (store on user record)</li>
           <li>Notification preferences (AAR approvals, mentions)</li>

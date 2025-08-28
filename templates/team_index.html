@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}US Army Drone Team – Skynet{% endblock %}
+{% block content %}
+<style>
+  .container{width:92%;max-width:1100px;margin:2rem auto}
+  .grid{display:grid;gap:1rem}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+  .hero{display:grid;gap:.75rem}
+  .hero h1{margin:.25rem 0}
+  .actions{display:flex;gap:.5rem;flex-wrap:wrap}
+  .btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--muted);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:inherit}
+  .btn:hover{filter:brightness(.97)}
+  .two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:1rem}
+  @media (max-width: 980px){.two-col{grid-template-columns:1fr}}
+  .org{display:grid;gap:.5rem}
+  .org .tier{border:1px solid var(--border);border-radius:12px;padding:.75rem;background:#fafafa}
+  .org .tier h3{margin:.1rem 0 .35rem 0;font-size:1rem}
+  .chips{display:flex;gap:.5rem;flex-wrap:wrap}
+  .chip{background:#fff;border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem}
+</style>
+
+<div class="container grid">
+  <!-- Hero / Summary -->
+  <section class="card hero">
+    <h1>US Army Drone Team</h1>
+    <p>{{ summary }}</p>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('team.apply') }}">Apply Now</a>
+      <a class="btn" href="{{ url_for('team.calendar') }}">View Full Calendar</a>
+    </div>
+  </section>
+
+  <div class="two-col">
+    <!-- Embedded Agenda (compact list) -->
+    <section class="card">
+      <h2 style="margin-top:0">Upcoming Events</h2>
+      {% if cal_id %}
+        <iframe
+          src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showCalendars=0&showTabs=0&showPrint=0&showDate=0&wkst=1&src={{ cal_id | urlencode }}&ctz={{ tz | urlencode }}"
+          style="border:0" width="100%" height="300" frameborder="0" scrolling="no">
+        </iframe>
+        <p style="margin:.5rem 0 0 0">
+          Need more? <a href="{{ url_for('team.calendar') }}">Open the full calendar</a>.
+        </p>
+      {% else %}
+        <p class="meta">Calendar not configured.</p>
+      {% endif %}
+    </section>
+
+    <!-- Org chart + roster -->
+    <section class="card">
+      <h2 style="margin-top:0">Team Structure & Roster</h2>
+      <div class="org">
+        {% for role, people in hierarchy.items() %}
+          <div class="tier">
+            <h3>{{ role }}</h3>
+            <div class="chips">
+              {% for p in people %}
+                <span class="chip">{{ p }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:1rem">
+        <h3 style="margin:.75rem 0 .25rem 0">Current Operators</h3>
+        <ul style="margin:.5rem 0 0 1.25rem">
+          {% for name in operators %}
+            <li>{{ name }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+

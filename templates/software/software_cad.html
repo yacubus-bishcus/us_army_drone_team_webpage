@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Software Database — CAD{% endblock %}
+{% block content %}
+<style>
+  .container{width:92%;max-width:1100px;margin:2rem auto}
+  .grid{display:grid;gap:1rem}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media (max-width: 980px){.two-col{grid-template-columns:1fr}}
+  .field label{font-size:.9rem;display:block;margin-bottom:4px}
+  .field input, .field textarea, .field select{width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:#fff}
+  .actions{display:flex;gap:.5rem;flex-wrap:wrap}
+  .btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--muted);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:inherit}
+  .btn:hover{filter:brightness(.97)}
+  table{width:100%;border-collapse:collapse}
+  th, td{border:1px solid var(--border-strong);padding:.6rem;text-align:left}
+  th{background:#eee}
+  .meta{color:var(--text-muted);font-size:.9rem}
+  .tags{opacity:.9}
+</style>
+
+<div class="container grid">
+  <h1>CAD Library</h1>
+
+  <div class="two-col">
+    <!-- Upload form -->
+    <section class="card">
+      <h2 style="margin-top:0">Upload CAD File</h2>
+      {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <form action="{{ url_for('software.cad_upload') }}" method="post" enctype="multipart/form-data">
+          <div class="field">
+            <label for="display_name">Display name *</label>
+            <input id="display_name" name="display_name" required placeholder="e.g., MQ-1C nose section v2">
+          </div>
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+              <option value="">—</option>
+              <option>Airframe</option>
+              <option>Payload</option>
+              <option>Gimbal</option>
+              <option>Adapter</option>
+              <option>Ground Support</option>
+              <option>Misc</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tags">Tags (comma-separated)</label>
+            <input id="tags" name="tags" placeholder="e.g., raven, mount, revA">
+          </div>
+          <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="Short notes or version info"></textarea>
+          </div>
+          <div class="field">
+            <label for="file">File *</label>
+            <input id="file" name="file" type="file"
+                  accept=".stl,.step,.stp,.iges,.igs,.obj,.3mf,.zip,.dwg,.dxf,.sldprt,.sldasm" required>
+          </div>
+          <div class="actions">
+            <button class="btn" type="submit">Upload</button>
+            <a class="btn" href="{{ url_for('software.cad') }}">Reset</a>
+          </div>
+          <p class="meta">Max file size is limited by <code>MAX_CONTENT_LENGTH</code> in your config.</p>
+        </form>
+      {% else %}
+        <p class="meta">Only administrators can upload CAD files. If you need to submit a file, please contact an admin.</p>
+      {% endif %}
+    </section>
+
+    <!-- Library table -->
+    <section class="card">
+      <h2 style="margin-top:0">Library</h2>
+      {% if files %}
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Tags</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Uploaded</th>
+              <th>By</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in files %}
+              <tr>
+                <td>
+                  <div><strong>{{ r.display_name }}</strong></div>
+                  {% if r.description %}<div class="meta">{{ r.description }}</div>{% endif %}
+                </td>
+                <td>{{ r.category or "—" }}</td>
+                <td><span class="tags">{{ r.tags or "—" }}</span></td>
+                <td>{{ r.ext.replace('.', '').upper() }}</td>
+                <td>
+                  {% set sz = (r.size_bytes|int) if r.size_bytes else 0 %}
+                  {% if sz < 1024 %} {{ sz }} B
+                  {% elif sz < 1024*1024 %} {{ (sz/1024)|round(1) }} KB
+                  {% else %} {{ (sz/1024/1024)|round(2) }} MB
+                  {% endif %}
+                </td>
+                <td>{{ r.uploaded_at }}</td>
+                <td>{{ r.uploaded_by }}</td>
+                <td><a class="btn" href="{{ url_for('software.cad_download', stored_filename=r.stored_filename) }}">Download</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="meta">No CAD files yet.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

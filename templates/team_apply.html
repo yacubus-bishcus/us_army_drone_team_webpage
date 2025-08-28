@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}US Army Drone Team – Skynet{% endblock %}
+{% block content %}
+<style>
+  .container{width:92%;max-width:900px;margin:2rem auto}
+  .stack{display:grid;gap:1rem}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+  .alerts{max-width:900px;margin:.5rem auto 1rem}
+  .alert{padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;text-align:center}
+  .alert-success{background:#f0fff0;border-color:#b2e6b2}
+  .alert-error{background:#fff0f0;border-color:#e6b2b2}
+  form.app-form{display:grid;gap:12px}
+  .row{display:grid;gap:10px}
+  .row.cols-2{grid-template-columns:1fr 1fr}
+  .field label{font-size:.9rem;display:block;margin-bottom:4px}
+  .field input,.field textarea, .field select{width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:#fff}
+  .field textarea{min-height:120px;resize:vertical}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--muted);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:inherit}
+  .btn:hover{filter:brightness(.97)}
+  .meta{color:var(--text-muted);font-size:.9rem}
+</style>
+
+<div class="container stack">
+  <h1>US Army Drone Team Application</h1>
+
+  <div class="card">
+    <form class="app-form" method="post" action="{{ url_for('team.apply') }}" enctype="multipart/form-data">
+      <div class="row cols-2">
+        <div class="field">
+          <label for="name">Full name *</label>
+          <input id="name" name="name" required>
+        </div>
+        <div class="field">
+          <label for="unit">Unit *</label>
+          <input id="unit" name="unit" required placeholder="e.g., 1-101 AVN (ARB)">
+        </div>
+      </div>
+
+      <div class="row cols-2">
+        <div class="field">
+          <label for="email">Email *</label>
+          <input id="email" name="email" type="email" required>
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" placeholder="optional">
+        </div>
+      </div>
+
+      <div class="row cols-2">
+        <div class="field">
+          <label for="years_experience">Years of experience</label>
+          <input id="years_experience" name="years_experience" type="number" min="0" step="1" placeholder="e.g., 4">
+        </div>
+        <div class="field">
+          <label for="primary_platforms">Primary platforms</label>
+          <input id="primary_platforms" name="primary_platforms" placeholder="e.g., RQ-7B, MQ-1C, Raven">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="skills">Key skills</label>
+          <input id="skills" name="skills" placeholder="e.g., ISR, EW, swarm tactics">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="availability">Availability</label>
+          <input id="availability" name="availability" placeholder="e.g., evenings/weekends; TDY-ready">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="statement">Motivation / Statement</label>
+          <textarea id="statement" name="statement" placeholder="Brief statement on why you want to join the team."></textarea>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="video">Intro video — mp4/mov/avi/mkv</label>
+          <input id="video" name="video" type="file" accept=".mp4,.mov,.avi,.mkv">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="submit">Submit Application</button>
+        <a class="btn" href="{{ url_for('team.apply') }}">Reset</a>
+      </div>
+
+      <p class="meta">Max size is limited by server config (MAX_CONTENT_LENGTH). If your upload fails, try compressing the video.</p>
+    </form>
+  </div>
+</div>
+{% endblock %}

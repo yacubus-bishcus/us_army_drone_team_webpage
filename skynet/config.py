@@ -9,6 +9,10 @@ class Config:
     BASE_DIR   = Path(__file__).resolve().parent.parent
     DATA_DIR   = os.getenv("DATA_DIR", str(BASE_DIR / "data"))
 
+    # Calendar Settings 
+    GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "")
+    TIMEZONE = os.getenv("APP_TIMEZONE", "America/Chicago")
+
     # Mail Settings 
     MAIL_SERVER   = os.getenv("MAIL_SERVER", "smtp.gmail.com")
     MAIL_PORT     = int(os.getenv("MAIL_PORT", "587"))

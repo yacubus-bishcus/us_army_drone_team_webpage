@@ -1,3 +1,5 @@
+# skynet/db.py
+# Handles Users 
 import sqlite3
 from pathlib import Path
 from flask_login import UserMixin

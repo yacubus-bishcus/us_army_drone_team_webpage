@@ -4,3 +4,5 @@ flask-login
 python-dotenv
 flask_sqlalchemy
 flask_migrate
+requests==2.32.3
+beautifulsoup4==4.12.3

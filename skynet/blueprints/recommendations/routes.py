@@ -1,10 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 from flask_login import login_required, current_user
-from ..mailer import send_admin_email
+from ...mailer import send_admin_email
 
-bp = Blueprint("recommendations", __name__)
+bp = Blueprint("recommendations", __name__, url_prefix="/recommendations")
 
-@bp.route("/submit-recommendations", methods=["GET", "POST"])
+@bp.route("/submit", methods=["GET", "POST"], endpoint="submit")
 @login_required
 def submit():
     if request.method == "POST":

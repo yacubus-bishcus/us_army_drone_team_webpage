@@ -8,32 +8,66 @@
   .card img{width:100%;height:180px;object-fit:cover;display:block}
   .card .body{padding:.75rem 1rem}
   .sidebar{position:sticky;top:1rem;border:1px solid #ddd;border-radius:12px;padding:1rem;background:#fafafa}
-  .sidebar h3{margin:0 0 .5rem 0}
-  .field{display:flex;flex-direction:column;gap:.25rem;margin:.5rem 0}
-  .results{max-height:50vh;overflow:auto;margin-top:.75rem;border-top:1px solid #e5e5e5;padding-top:.75rem}
-  .wp{padding:.5rem 0;border-bottom:1px dashed #e2e2e2}
-  .wp small{display:block;opacity:.7}
-  .tags{font-size:.85rem;opacity:.85}
-  .upload{margin-top:1rem;border-top:1px solid #e5e5e5;padding-top:1rem}
+  .admin-add{margin:0 0 1rem 0;border:1px dashed #bbb;padding:.75rem;border-radius:10px;background:#fff}
+  .admin-add .row{display:flex;gap:.5rem;align-items:center}
+  .admin-add input{flex:1;padding:10px;border:1px solid #bbb;border-radius:8px}
+  .admin-add button{padding:10px 14px;border:1px solid #999;background:#eee;border-radius:8px;cursor:pointer}
   @media (max-width:980px){.page{grid-template-columns:1fr}.sidebar{position:static}}
 </style>
 
-<div class="container">
-  <h1>UAS News Summary</h1>
-  <div class="page">
-    <section>
-      <div class="cards">
-        {% for n in news_items %}
-        <article class="card">
-          <img src="{{ n.image }}" alt="{{ n.title }}">
-          <div class="body">
-            <h3>{{ n.title }}</h3>
-            <p>{{ n.summary }}</p>
+<div class="page">
+  <section>
+    <h1>UAS News Summary</h1>
+
+    {# Admin quick-add by URL #}
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+      <div class="admin-add">
+        <form action="{{ url_for('news.add_article_url') }}" method="post">
+          <div class="row">
+            <input name="url" type="url" placeholder="Paste article URL (https://…)" required>
+            <button type="submit">Add Article</button>
           </div>
-        </article>
-        {% endfor %}
+          <div class="meta" style="margin-top:.35rem">We’ll fetch title/summary/thumbnail automatically.</div>
+        </form>
       </div>
-    </section>
+    {% endif %}
+
+    <div class="cards">
+      {% for n in news_items %}
+      <article class="card">
+        <img src="{{ n.image }}" alt="{{ n.title }}">
+        <div class="body">
+          {% if n.link %}
+            <h3><a href="{{ n.link }}" target="_blank" rel="noopener">{{ n.title }}</a></h3>
+          {% else %}
+            <h3>{{ n.title }}</h3>
+          {% endif %}
+          <p>{{ n.summary }}</p>
+      
+          {# Admin-only controls for CSV-backed items #}
+          {% if current_user.is_authenticated and current_user.role == 'admin' and n.source == 'csv' and n.id %}
+            <form action="{{ url_for('news.delete_article', article_id=n.id) }}" method="post" style="margin-top:.5rem">
+              <button type="submit"
+                      onclick="return confirm('Delete this article card?');"
+                      style="padding:6px 10px;border:1px solid #c33;background:#f8d7da;border-radius:8px;cursor:pointer">
+                Delete
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </article>
+      
+      {% endfor %}
+    </div>
+
+    <!-- Useful links section -->
+    <div class="useful-links">
+      <h3>Useful Links</h3>
+      <ul>
+        <li><a href="https://dronexl.co" target="_blank" rel="noopener">DroneXL — Drone News &amp; Industry Updates</a></li>
+      </ul>
+    </div>
+  </section>
 
     <aside class="sidebar">
       <h3>White Papers</h3>

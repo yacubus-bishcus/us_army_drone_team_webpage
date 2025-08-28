@@ -51,10 +51,12 @@ def create_app():
     from .blueprints.compare import bp as compare_bp
     from .blueprints.search import bp as search_bp
     from .blueprints.aars import bp as aars_bp
-    from .blueprints.recommendations import bp as recs_bp
+    from .blueprints.team import team_bp
     from .blueprints.news import news_bp
     from .blueprints.software import software_bp 
     from .blueprints.profile import bp as profile_bp
+    from .blueprints.recommendations import bp as recs_bp 
+
 
     app.register_blueprint(core_bp)
     app.register_blueprint(auth_bp)
@@ -62,10 +64,11 @@ def create_app():
     app.register_blueprint(compare_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(aars_bp)
-    app.register_blueprint(recs_bp)
+    app.register_blueprint(team_bp)
     app.register_blueprint(news_bp)
     app.register_blueprint(software_bp)
     app.register_blueprint(profile_bp)
+    app.register_blueprint(recs_bp)
     
     # Global login wall (lets Home/Login/Register/Static through)
     @app.before_request

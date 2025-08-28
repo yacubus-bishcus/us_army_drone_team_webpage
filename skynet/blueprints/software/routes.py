@@ -1,19 +1,86 @@
 import os
 from flask import render_template, request, jsonify, current_app, abort, send_from_directory, url_for
+from flask_login import login_required, current_user 
 from sqlalchemy import inspect
 from skynet.extensions import db
 from skynet.models import SoftwareFile
 from . import software_bp
+from functools import wraps 
+from skynet.authz import admin_required 
+from skynet.services import software as svc 
 
+# Allow common CAD formats; add/remove as needed
+ALLOWED_CAD_EXTS = {".stl",".step",".stp",".iges",".igs",".obj",".3mf",".zip",".dwg",".dxf",".sldprt",".sldasm"}
+
+    
 # Landing page with two big tabs/cards
 @software_bp.route("/", methods=["GET"])
 def index():
     return render_template("software/index.html")
 
-# CAD list page
-@software_bp.route("/cad", methods=["GET"])
+@software_bp.route("/software/cad", methods=["GET"])
+@login_required
 def cad():
-    return _render_list_page("cad")
+    files = svc.list_cad(current_app)
+    return render_template("software/software_cad.html", files=files)
+
+# CAD UPLOAD/DOWNLOAD
+# UPLOADS admin only function 
+@software_bp.route("/software/cad/upload", methods=["POST"])
+@admin_required
+def cad_upload():
+    f = request.files.get("file")
+    display_name = (request.form.get("display_name") or "").strip()
+    category = (request.form.get("category") or "").strip()
+    tags = (request.form.get("tags") or "").strip()
+    description = (request.form.get("description") or "").strip()
+
+    if not f or not f.filename:
+        flash("Please choose a file to upload.", "error")
+        return redirect(url_for("software.cad"))
+    if not display_name:
+        flash("Please provide a display name.", "error")
+        return redirect(url_for("software.cad"))
+
+    ext = Path(f.filename).suffix.lower()
+    if ext not in ALLOWED_CAD_EXTS:
+        flash(f"Unsupported file type {ext}. Allowed: {', '.join(sorted(ALLOWED_CAD_EXTS))}", "error")
+        return redirect(url_for("software.cad"))
+
+    # Save file
+    file_id = str(uuid.uuid4())
+    stored_name = f"{file_id}_{secure_filename(f.filename)}"
+    dest = svc.cad_dir(current_app) / stored_name
+    data = f.read()
+    dest.write_bytes(data)
+
+    # Write metadata row
+    row = {
+        "id": file_id,
+        "display_name": display_name,
+        "category": category,
+        "tags": tags,
+        "description": description,
+        "stored_filename": stored_name,
+        "ext": ext,
+        "size_bytes": str(len(data)),
+        "uploaded_by": current_user.username if current_user.is_authenticated else "anonymous",
+        "uploaded_at": __import__("datetime").datetime.utcnow().isoformat(timespec="seconds"),
+    }
+    svc.add_cad_row(current_app, row)
+
+    flash("CAD file uploaded.", "success")
+    return redirect(url_for("software.cad"))
+
+@software_bp.route("/files/cad/<path:stored_filename>")
+@login_required
+def cad_download(stored_filename):
+    # Simple guard: only serve files that exist under the CAD dir
+    d = svc.cad_dir(current_app)
+    target = d / stored_filename
+    if not target.exists() or not target.is_file():
+        abort(404)
+    return send_from_directory(d, stored_filename, as_attachment=True)
 
 # UAS list page
 @software_bp.route("/uas", methods=["GET"])

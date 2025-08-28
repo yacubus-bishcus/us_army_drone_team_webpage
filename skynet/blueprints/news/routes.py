@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
-from flask import render_template, request, jsonify, current_app, flash, redirect, url_for
+from flask import render_template, request, jsonify, current_app, flash, redirect, url_for, abort
+from flask_login import login_required, current_user 
+from skynet.services import news as news_svc 
+from skynet.authz import admin_required
 from werkzeug.utils import secure_filename
 from skynet.extensions import db
 from skynet.models import WhitePaper
@@ -9,16 +12,22 @@ from sqlalchemy import inspect
 
 # GET page
 @news_bp.route("/", methods=["GET"])
+@login_required 
 def uas_news():
     # Example cards; replace with your real feed later
-    news_items = [
-        {"title": "US Army demos attritable UAS",
-         "image": url_for("static", filename="img/demo1.jpg"),
-         "summary": "A quick look at the latest attritable UAS demo and takeaways."},
-        {"title": "Navy releases sUAS integration memo",
-         "image": url_for("static", filename="img/demo2.jpg"),
-         "summary": "Highlights from the memo and implications for joint ops."},
-    ]
+    news_items = []
+    csv_articles = news_svc.list_articles(current_app)  # newest first
+    # Transform CSV rows to the same shape expected by template
+    for a in csv_articles:
+        news_items.append({
+            "id": a["id"],
+            "source": "csv",
+            "title": a["title"],
+            "summary": a["summary"],
+            "image": a["image_url"] or url_for("static", filename="img/news_fallback.jpg"),
+            "link": a["url"],
+        })
+    # WHITE PAPERS 
     insp = inspect(db.engine)
     if insp.has_table("white_papers"):
         years = [y[0] for y in db.session.query(WhitePaper.year).distinct().order_by(WhitePaper.year.desc())]
@@ -28,6 +37,32 @@ def uas_news():
         years, tags = [], []
 
     return render_template("uas_news.html", news_items=news_items, years=years, tags=tags)
+
+# admin-only endpoint to add by URL
+@news_bp.route("/admin/articles/url", methods=["POST"])
+@admin_required
+def add_article_url():
+    url = (request.form.get("url") or "").strip()
+    if not url:
+        flash("Please provide a URL.", "error")
+        return redirect(url_for("news.uas_news"))
+    try:
+        news_svc.add_article_by_url(current_app, url, current_user.username)
+        flash("Article added.", "success")
+    except Exception as e:
+        current_app.logger.exception("Add article failed: %s", e)
+        flash(f"Failed to add article: {e}", "error")
+    return redirect(url_for("news.uas_news"))
+
+@news_bp.route("/admin/articles/<article_id>/delete", methods=["POST"])
+@admin_required
+def delete_article(article_id):
+    ok = news_svc.delete_article(current_app, article_id)
+    if ok:
+        flash("Article deleted.", "success")
+    else:
+        flash("Article not found.", "error")
+    return redirect(url_for("news.uas_news"))
 
 # JSON search endpoint (called by sidebar JS)
 @news_bp.route("/search", methods=["GET"])
