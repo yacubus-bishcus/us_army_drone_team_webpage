@@ -48,8 +48,8 @@ def create_app():
     from .blueprints.core import bp as core_bp
     from .blueprints.auth import bp as auth_bp
     from .blueprints.admin import bp as admin_bp
-    from .blueprints.compare import bp as compare_bp
-    from .blueprints.search import bp as search_bp
+    from .blueprints.compare import compare_bp
+    from .blueprints.search import search_bp
     from .blueprints.aars import bp as aars_bp
     from .blueprints.team import team_bp
     from .blueprints.news import news_bp

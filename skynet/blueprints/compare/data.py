@@ -8,14 +8,14 @@ def _norm(row):
     return {
         "id": row.get("id") or row.get("ID"),
         "name": row.get("drone name") or row.get("name") or row.get("UAS Name"),
-        "company": row.get("drone company") or row.get("company"),
+        "manufacturer": row.get("manufacturer") or row.get("manufacturer"),
         "range": row.get("range"),
-        "endurance": row.get("endurance"),
+        "endurance": row.get("endurance_min"),
         "ceiling": row.get("ceiling"),
         "payload_capacity": row.get("payload capacity") or row.get("payload"),
         "camera_system": row.get("camera system") or row.get("camera"),
-        "max_speed": row.get("max speed") or row.get("speed"),
-        "weight": row.get("weight"),
+        "speed_mph": row.get("max speed") or row.get("speed") or row.get("speed_mph"),
+        "weight_lbs": row.get("weight") or row.get("weight_lbs"),
         "price": row.get("price") or row.get("price per unit"),
         "notes": row.get("notes") or "",
     }

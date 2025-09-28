@@ -6,3 +6,5 @@ flask_sqlalchemy
 flask_migrate
 requests==2.32.3
 beautifulsoup4==4.12.3
+gspread==6.1.4
+google-auth==2.35.0

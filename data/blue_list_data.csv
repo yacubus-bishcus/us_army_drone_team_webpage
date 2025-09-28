@@ -17,8 +17,8 @@ K1000ULE,Kraus Hamdani Aerospace,USA,,unk,unk,unk,unk,unk,unk,unk,Y,N,https://kh
 Stinger Vision,ModalAI,USA,3399.99,11,12,unk,1.27,,unk,EO/IR,Y,N,https://www.modalai.com/products/stinger-vision-fpv?variant=48373207695664,,,VOXL SDK,08/08/25,,1,,,"Qualcomm QRB5165, 8 cores"
 Seeker Vision/Max,ModalAI,USA,,unk,unk,unk,unk,unk,unk,unk,Y,Y,https://www.modalai.com/pages/blue-uas-cleared-fpv-customer-intake-form,,,,04/11/25,,,,,
 Talon DT-300,Mountain Horse Solutions,USA,,70,120,50,,16400,30,unk,Y,N,https://mtnhorse.com/,,,,08/13/25,,,,,
-Archer,Neros Technology,USA,,unk,unk,unk,unk,unk,unk,unk,Y,Y,https://www.neros.tech/,,,,02/14/25,,,,,
-ANAFI UKR,Parrot,France,,23.1,38,38,2.11,16400,0.49,EO/IR,Y,Y,https://www.parrot.com/en/anafi-ukr-technical-specifications,,,,04/11/25,Recon,2,"5G, WIFI, MARS",,
+Archer,Neros Technology,USA,10900,25-50,25,90,4.5,unk,2,EO/IR,Y,Y,https://www.neros.tech/,,,,02/14/25,Hunter/Killer,3,Radio,,
+ANAFI UKR,Parrot,France,,23.1,38,38,2.11,16400,0.49,EO/IR,Y,Y,https://www.parrot.com/en/anafi-ukr-technical-specifications,,,,04/11/25,Recon,2,"5G, WIFI, MARS",-36 to 50,"Ambarella H22 processor, MPU-6000 Invensense IMU"
 ANAFI USA GOV/MIL,Parrot,France,,17.4,32,33,1.1,16400,unk,EO/IR,Y,N,https://www.parrot.com/en/drones/anafi-usa,,Y,ANAFI SDK,08/25/22,Recon,1,,-36 to 50,"Ambarella H22 processor, MPU-6000 Invensense IMU"
 Vector,Quantum Systems,USA,,60,180,34-45,21,13123,unk,EO/IR,Y,N,https://quantum-systems.com/vector/,,,,08/04/25,Recon,,WIFI,,2x NVIDIA Jetson Orin NX 
 V-BAT,Shield AI,USA,,139-1200,780,56,85,18000,18.1,"SAR, ViDAR, EO/IR",Y,N,https://shield.ai/v-bat/,,Y,"EdgeOS, Hivemind AI pilot software",08/06/25,Hunter/Killer,,"SATCOM, AI, Radio",-40 to 50,
