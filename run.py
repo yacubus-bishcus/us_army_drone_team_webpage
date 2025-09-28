@@ -3,7 +3,7 @@ from pathlib import Path
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
-from skynet import create_app  # import after .env is loaded
+from drone_team import create_app  # import after .env is loaded
 
 app = create_app()
 
