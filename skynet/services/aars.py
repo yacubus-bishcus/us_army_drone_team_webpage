@@ -16,11 +16,8 @@ def files_dir(app):
 def create_aar_csv_if_missing(app):
     p = aar_path(app)
     if not p.exists():
-<<<<<<< HEAD
         _data_dir(app).mkdir(parents=True, exist_ok=True)
-=======
         Path(_data_dir(app)).mkdir(parents=True, exist_ok=True)
->>>>>>> dd6d3f0 (FIX DATA_DIR bug and update .env template)
         pd.DataFrame(columns=AAR_COLUMNS).to_csv(p, index=False)
 
 def _summarize(text, max_chars=240, max_sentences=3):

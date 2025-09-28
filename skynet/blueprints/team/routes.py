@@ -1,3 +1,4 @@
+#/skynet/blueprints/team/routes.py
 import uuid
 from pathlib import Path
 from werkzeug.utils import secure_filename
@@ -5,6 +6,9 @@ from flask import render_template, request, redirect, url_for, flash, current_ap
 from flask_login import login_required, current_user
 from . import team_bp
 from ...services import team as svc
+from ...services import sheets as sheets_svc 
+from skynet import mailer 
+from plistlib import Data
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 
@@ -13,22 +17,20 @@ ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 @login_required
 def index():
     summary = (
-        "The US Army Drone Team advances small UAS tactics, training, and technology across the force. "
-        "We evaluate platforms and software, run rapid experiments, publish TTPs, and support units with "
-        "best practices for ISR, EW resilience, and swarming/attritable concepts."
+        "The US Army Drone Team drives unmanned aerial systems (UAS) innovation to ensure technological \
+        and operational dominance in modern warfare through national and international competitions. \
+        By recruiting and training the next generation of drone operators, the Army Drone Team advances \
+        tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative.    "
     )
 
     hierarchy = {
-        "Overseer": ["Col Ryan"],
-        "Executive Officer": ["CPT Bickus"],
-        "Team Captain": ["SSG Smith"],
-        "Vice Captain": ["Tyler Booth"],
-        "Team Leads": ["Sean Bradley", "Aaron Terran"],
+        "OIC": ["CPT Bickus"],
+        "NCOIC": ["SSG Smith"]
     }
 
     operators = [
-        "SSG Smith", "Tyler Booth", "SGT Cantu", "Joe Eason", "Sam Fox",
-        "Ryan Johnson", "Jacob Loyd", "SSG Schiller", "SSG Ringsmuth"
+        "SFC Aaron Teran", "Tyler Booth", "SGT Cantu",
+        "CPT Ryan Johnson", "SSG Brandon Schiller", "SSG Stephen Ringsmuth", "SGT Jacob Loyd"
     ]
 
     # Pass calendar config to the template for the iframe embed
@@ -61,18 +63,21 @@ def apply():
             "app_id": str(uuid.uuid4()),
             "username": current_user.username if current_user.is_authenticated else "anonymous",
             "name": (request.form.get("name") or "").strip(),
+            "grade": (request.form.get("grade") or "").strip(),
             "unit": (request.form.get("unit") or "").strip(),
             "email": (request.form.get("email") or "").strip(),
             "phone": (request.form.get("phone") or "").strip(),
             "years_experience": (request.form.get("years_experience") or "").strip(),
             "primary_platforms": (request.form.get("primary_platforms") or "").strip(),
             "skills": (request.form.get("skills") or "").strip(),
-            "availability": (request.form.get("availability") or "").strip(),
+            "deploying_12mo": (request.form.get("deploying_12mo", "N/A")),
+            "parental_leave_12mo": (request.form.get("parental_leave_12mo", "N/A")),
+            "tdy_restrictions": (request.form.get("tdy_restrictions") or "").strip(),
             "statement": (request.form.get("statement") or "").strip(),
         }
 
         # Basic validation
-        missing = [k for k in ("name", "unit", "email") if not data[k]]
+        missing = [k for k in ("name", "grade", "unit", "email") if not data[k]]
         if missing:
             flash(f"Missing required fields: {', '.join(missing)}", "error")
             return redirect(url_for("team.apply"))
@@ -93,16 +98,58 @@ def apply():
             saved_rel = f"videos/{fname}"
 
         data["video_path"] = saved_rel
-
         # Save + email
         saved = svc.append_application(current_app, data)
+        # Ensure we always pass a dict to the mailer
+        row_for_email = saved if isinstance(saved, dict) else data 
+        
+        # Append data to google sheets 
         try:
-            svc.email_application_via_mailer(current_app, saved)
+            sheets_svc.append_application_row(current_app, row_for_email)
+        except Exception as e:
+            current_app.logger.exception("Failed to append to Google Sheet: %s", e)
+            
+        # --- Admin Email ---
+        try:
+            svc.email_application_via_mailer(current_app, row_for_email)
         except Exception as e:
             current_app.logger.exception("Failed to email application: %s", e)
 
-        flash("Application submitted. Thank you!", "success")
-        return redirect(url_for("team.apply"))
+        # --- Applicant confirmation email --- 
+        track_name = "US Army Drone Team Velicodrone Track" 
+        track_url = "https://exampleurl.com"
+        track_pw = current_app.config.get("RACETRACK_PASSWORD", "example password")
+        track_info = "info on track here"
+
+        subject_user = "US Army Drone Team -- Application Received"
+        body_user = f"""Hi {data.get("name") or 'Applicant'},
+        Thanks for applying to the US Army Drone Team. We've received your application and look
+        forward to reviewing your Velocidrone performance. If you need help finding the track
+        please refer to the information below or reach out to SSG Alwyne Smith with questions 
+        at XXX-XXX-XXXX.
+
+        Racetrack Access
+        ----------------
+        Track: {track_name}
+        URL:   {track_url}
+        Password: {track_pw}
+
+        Notes:
+        {track_info}
+
+        v/r,
+        US Army Drone Team
+        """
+
+        try:
+            mailer.send_email(current_app, to=data["email"], subject=subject_user, body=body_user)
+        
+        except Exception as e:
+            current_app.logger.exception("Failed to email applicant confirmation: %s", e)
+
+        flash("Application submitted. A confirmation email has been sent to you. Thank you!", "success")
+        # return to team home page 
+        return redirect(url_for("team.index"))
 
     # GET
     return render_template("team_apply.html")

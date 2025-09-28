@@ -1,67 +1,60 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <title>Skynet Database — Home</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      --radius: 10px;
-      --nav-bg: #333; --nav-text: #fff; --nav-hover: #444;
-      --border: #bbb; --bg: #0b0f14; --glass: rgba(255,255,255,0.08);
-      --text: #eef3f8; --muted: #cfd7df;
-      --success-bg: #12361a; --success-brd: #2f7a3d;
-      --error-bg: #3a0f0f; --error-brd: #8a3b3b;
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; color: var(--text); background: var(--bg);
-      background-image: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
-        url("/static/img/home_screen.jpg");
-      background-size: cover; background-position: center; background-attachment: fixed;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-    nav { background: var(--nav-bg); padding: 0.6rem 1rem; }
-    nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap; }
-    nav a { color: var(--nav-text); text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 8px; }
-    nav a:hover { background: var(--nav-hover); }
-    .container { width: min(1100px, 92%); margin: 2.4rem auto; display: grid; gap: 1.6rem; }
-    .hero {
-      display: grid; gap: 1rem; padding: 2rem;
-      background: var(--glass); border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 16px; backdrop-filter: blur(6px);
-    }
-    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: 0.5px; }
-    p.lead { margin: 0; color: var(--muted); font-size: 1.05rem; }
-    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.2rem; }
-    .card {
-      background: var(--glass); border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 14px; padding: 1.2rem; backdrop-filter: blur(6px);
-    }
-    .card h2 { margin-top: 0; }
-    .login form { display: grid; gap: 10px; }
-    .field label { font-size: 0.95rem; color: #e8eef4; }
-    .field input {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #6b7a89;
-      background: rgba(5,10,15,0.6); color: #e8eef4;
-    }
-    .actions button {
-      padding: 10px 14px; border: 1px solid #6b7a89;
-      background: rgba(20,30,40,0.6); color: #e8eef4;
-      border-radius: 10px; cursor: pointer;
-    }
-    .actions button:hover { filter: brightness(1.1); }
-    .alerts { max-width: 900px; margin: 0 auto; }
-    .alert { padding: 10px 14px; border-radius: 10px; border: 1px solid #566372; margin: 8px 0; text-align: center; }
-    .alert-success { background: var(--success-bg); border-color: var(--success-brd); }
-    .alert-error { background: var(--error-bg); border-color: var(--error-brd); }
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body>
+  <head>
+    <meta charset="utf-8" />
+    <title>US Army Drone Team— Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
+    <!-- Load shared styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  
+    <style>
+      :root {
+        --radius: 10px;
+        --nav-bg: #333; --nav-text: #fff; --nav-hover: #444;
+        --border: #bbb; --bg: #0b0f14; --glass: rgba(255,255,255,0.08);
+        --text: #eef3f8; --muted: #cfd7df;
+        --success-bg: #12361a; --success-brd: #2f7a3d;
+        --error-bg: #3a0f0f; --error-brd: #8a3b3b;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0; color: var(--text); background: var(--bg);
+        /* Removed page-level logo background to avoid double-use of the emblem */
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+      nav { background: var(--nav-bg); padding: 0.6rem 1rem; }
+      nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap; }
+      nav a { color: var(--nav-text); text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 8px; }
+      nav a:hover { background: var(--nav-hover); }
+      .container { width: min(1100px, 92%); margin: 2.4rem auto; display: grid; gap: 1.6rem; }
+      .hero { display: grid; gap: 1rem; padding: 2rem; background: var(--glass);
+              border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; backdrop-filter: blur(6px); }
+      h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: 0.5px; }
+      p.lead { margin: 0; color: var(--muted); font-size: 1.05rem; }
+      .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.2rem; }
+      .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.15);
+              border-radius: 14px; padding: 1.2rem; backdrop-filter: blur(6px); }
+      .card h2 { margin-top: 0; }
+      .login form { display: grid; gap: 10px; }
+      .field label { font-size: 0.95rem; color: #e8eef4; }
+      .field input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #6b7a89;
+                     background: rgba(5,10,15,0.6); color: #e8eef4; }
+      .actions button { padding: 10px 14px; border: 1px solid #6b7a89;
+                        background: rgba(20,30,40,0.6); color: #e8eef4;
+                        border-radius: 10px; cursor: pointer; }
+      .actions button:hover { filter: brightness(1.1); }
+      .alerts { max-width: 900px; margin: 0 auto; }
+      .alert { padding: 10px 14px; border-radius: 10px; border: 1px solid #566372; margin: 8px 0; text-align: center; }
+      .alert-success { background: var(--success-bg); border-color: var(--success-brd); }
+      .alert-error { background: var(--error-bg); border-color: var(--error-brd); }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  
+
+  <body class="homepage">
 
   <!-- Top Nav -->
   {% include "partials/nav.html" %}
@@ -77,32 +70,44 @@
       {% endif %}
     </div>
 
-    <section class="hero">
-      {% if not current_user.is_authenticated %}
-        <a href="/login" class="actions"><button>Login</button></a>
-        <a href="/register" class="actions" style="margin-left:8px;"><button>Request Access</button></a>
-      {% else %}
-        <p class="meta">Logged in as <strong>{{ current_user.username }}</strong></p>
-      {% endif %}
+<!-- HERO: Split Screen -->
+<section class="hero hero--split" aria-labelledby="site-title">
+  <!-- Left: Emblem -->
+  <div class="hero__left">
+    <img
+      src="/static/img/drone_team_logo.jpg"  
+      alt="U.S. Army Drone Team Golden Hawks emblem"
+      class="hero__emblem"
+      width="900" height="900"
+      decoding="async" />
+  </div>
 
-      <h1>Skynet Database</h1>
-      <p class="lead">
-        An extensible UAS knowledge base and comparison platform. Curate specifications,
-        compare platforms side-by-side, submit AARs, and turn field insights into
-        actionable recommendations.
-      </p>
-    </section>
+  <!-- Right: Content -->
+  <div class="hero__right">
+    <h1 id="site-title" class="hero__title">U.S. Army Drone Team</h1>
+    <h2 class="hero__subtitle">Golden Hawks</h2>
 
-    <div class="grid">
-      <div class="card">
-        <h2>About the Project</h2>
-        <p>
-          Skynet Database centralizes Unmanned Aircraft System data for rapid analysis and decision support.
-          It supports CSV-backed storage for quick iteration and can scale to a relational database as
-          collaboration grows. Upcoming modules include advanced search, multi-criteria comparison,
-          AAR ingestion, and analyst workflows.
-        </p>
-      </div>
+    <p class="hero__blurb">
+      The Golden Hawks were established in 2025 at the Aviation Center of Excellence (AvCOE) to compete and win in national
+      and international events. Forging global alliances with partner nations to develope UxS TTPs, the US Army Drone team
+      strengthens defense through shared knowledge, skill, experimentation and operational excellence. 
+    </p>
+
+    <div class="hero__cta">
+      <a class="btn btn--gold" href="/about">About the Project</a>
+      <a class="btn btn--outline" href="/login">Login</a>
+      <a class="btn btn--outline" href="/request-access">Request Access</a>
+    </div>
+
+    <!-- Optional quick stats -->
+    <ul class="hero__stats" aria-label="Program highlights">
+      <li><span class="stat__num">33</span><span class="stat__label">Blue List UAS</span></li>
+      <li><span class="stat__num">15</span><span class="stat__label">Drone Team Members</span></li>
+      <li><span class="stat__num">24/7</span><span class="stat__label">Ops Ready</span></li>
+    </ul>
+  </div>
+</section>
+
 
       {% if not current_user.is_authenticated %}
       <div class="card login">

@@ -1,3 +1,4 @@
+#/skynet/blueprints/news/routes.py
 import os
 from datetime import datetime
 from flask import render_template, request, jsonify, current_app, flash, redirect, url_for, abort

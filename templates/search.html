@@ -6,7 +6,7 @@
 
   <!-- Search Form -->
   <div class="card">
-    <form class="search-form" action="/search" method="GET" id="searchForm">
+    <form class="search-form" action="{{ url_for('search.search') }}" method="GET" id="searchForm">
       <style>
         /* page-scoped styles only (no nav here) */
         form.search-form{display:grid;gap:12px}
@@ -19,9 +19,10 @@
         .field textarea{min-height:70px}
         .checkboxes{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:6px 12px}
         .checkboxes label{font-size:.92rem}
-        .actions{display:flex;gap:10px;flex-wrap:wrap}
+        .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
         .btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--muted);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:inherit;display:inline-block}
         .btn:hover{filter:brightness(.97)}
+        select.per-page{padding:10px;border:1px solid var(--border-strong);border-radius:var(--radius);background:#fff}
         @media (max-width:1100px){
           .row.cols-5{grid-template-columns:1fr 1fr}
           .row.cols-3,.row.cols-2{grid-template-columns:1fr}
@@ -97,11 +98,25 @@ name~raven, range_km>=100, endurance_hr=10..30, payload_kg<50, ceiling_m:5000..1
       <div class="actions">
         <button class="btn" type="submit">Search</button>
         <a class="btn" href="/search">Reset</a>
+
+        <!-- per-page selector -->
+        <label class="meta" for="per_page" style="margin-left:auto;">Rows per page:</label>
+        <select class="per-page" id="per_page" name="per_page" onchange="this.form.submit()">
+          {% for n in [10,25,50,100] %}
+            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- export (full filtered, not just current page) -->
         <a class="btn" id="exportBtn" href="{{ export_url }}">Export CSV</a>
       </div>
 
       <div class="meta">
-        {% if total %}
+        {% if filtered_total is not none %}
+          Filtered: {{ filtered_total }} row(s)
+          {% if results %} — showing {{ results|length }} (page {{ page }} of {{ pages }}){% endif %}.
+          &nbsp;|&nbsp; Dataset size: {{ total }} rows
+        {% elif total %}
           Dataset size: {{ total }} rows{% if results %}; showing {{ results|length }} result(s){% endif %}.
         {% endif %}
       </div>
@@ -129,6 +144,15 @@ name~raven, range_km>=100, endurance_hr=10..30, payload_kg<50, ceiling_m:5000..1
           {% endfor %}
         </tbody>
       </table>
+
+      <!-- Pagination controls -->
+      <nav aria-label="pagination" style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap;">
+        <a class="btn" href="{{ first_url }}" {% if page == 1 %}aria-disabled="true" style="pointer-events:none;opacity:.4"{% endif %}>« First</a>
+        <a class="btn" href="{{ prev_url or '#' }}" {% if not has_prev %}aria-disabled="true" style="pointer-events:none;opacity:.4"{% endif %}>‹ Prev</a>
+        <span class="meta">Page {{ page }} / {{ pages }}</span>
+        <a class="btn" href="{{ next_url or '#' }}" {% if not has_next %}aria-disabled="true" style="pointer-events:none;opacity:.4"{% endif %}>Next ›</a>
+        <a class="btn" href="{{ last_url }}" {% if page == pages %}aria-disabled="true" style="pointer-events:none;opacity:.4"{% endif %}>Last »</a>
+      </nav>
     {% else %}
       <p style="margin:0;">No results. Adjust your filters and try again.</p>
     {% endif %}
@@ -136,16 +160,20 @@ name~raven, range_km>=100, endurance_hr=10..30, payload_kg<50, ceiling_m:5000..1
 </div>
 
 <script>
+  // keep Export CSV URL updated to current filters (but drop pagination params)
   const form = document.getElementById('searchForm');
   const exportBtn = document.getElementById('exportBtn');
   function updateExportUrl(){
-    const params = new URLSearchParams(new FormData(form));
+    const fd = new FormData(form);
+    fd.delete('page'); fd.delete('per_page');
+    const params = new URLSearchParams(fd);
     exportBtn.href = '/search/export?' + params.toString();
   }
   form.addEventListener('change', updateExportUrl);
   form.addEventListener('input', updateExportUrl);
   updateExportUrl();
 
+  // sortable headers (your existing helper)
   (function(){
     const table = document.getElementById('resultsTable');
     if (!table) return;
@@ -161,3 +189,4 @@ name~raven, range_km>=100, endurance_hr=10..30, payload_kg<50, ceiling_m:5000..1
   })();
 </script>
 {% endblock %}
+
