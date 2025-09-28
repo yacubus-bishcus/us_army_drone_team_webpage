@@ -1,15 +1,18 @@
 # drone_team/__init__.py
-from flask import Flask
+from flask import Flask, request 
+from flask_login import current_user 
+from dotenv import load_dotenv
 from pathlib import Path
-from .config import Config
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+from .config import Config 
 from .extensions import login_manager, db, migrate 
-from .db import init_users_db, seed_admin_user
+from .db import init_users_db, seed_admin_user 
 from .services.uas import create_csv_if_missing
-from .services.aars import create_aar_csv_if_missing
+from .services.aars import create_aar_csv_if_missing 
 import webbrowser, os 
 from urllib.parse import quote_plus 
-from threading import Timer
-from dotenv import load_dotenv
+from threading import Timer 
+from .cli import register_cli
 
 def _open_browser_once():
     webbrowser.open_new("http://127.0.0.1:5000")
@@ -72,14 +75,41 @@ def create_app():
     
     # Global login wall (lets Home/Login/Register/Static through)
     @app.before_request
-    def require_login_for_tabs():
-        from flask import request
-        from flask_login import current_user
-        public = {"core.home", "auth.login_page", "auth.register_page", "static"}
-        if request.endpoint and request.endpoint not in public:
-            if not current_user.is_authenticated:
+    def access_control():
+        ep = request.endpoint or ""
+        bp = request.blueprint or ""
+        if ep == "static" or ep.endswith(".static"):
+            return 
+        # Endpoints that never require login (auth pages + static)
+        public_endpoints = {
+            "auth.login_page",
+            "auth.register_page",
+            "static",
+        }
+
+        # Endpoints allowed to ANY authenticated user (BETA_RELEASE)
+        user_allowed = {
+            "core.home",         # Home
+            "team.index",        # US Army Drone Team (landing/index)
+            "team.apply",        # US Army Drone Team Application 
+            "team.calendar",     # US Army Drone Team Calendar 
+            "profile.view",      # Profile
+            "auth.logout_page",  # Logout
+        }
+
+
+        # 1) Require login for everything except auth pages + static
+        if ep not in public_endpoints:
+            if not getattr(current_user, "is_authenticated", False):
+                return login_manager.unauthorized()
+
+        # 2) If logged in but NOT admin, allow only the beta endpoints
+        if getattr(current_user, "is_authenticated", False) and getattr(current_user, "role", "") != "admin":
+            if ep not in user_allowed:
+                # block anything else for non-admins
                 return login_manager.unauthorized()
 
     # Auto open browser (single instance)
+    register_cli(app)
     Timer(1, _open_browser_once).start()
     return app

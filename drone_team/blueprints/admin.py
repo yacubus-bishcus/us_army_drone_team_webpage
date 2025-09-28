@@ -21,8 +21,8 @@ def approve_user(token):
     with con:
         con.execute("UPDATE pending_users SET status='approved', decided_at=datetime('now') WHERE id=?", (row["id"],))
     con.close()
-    from ..mailer import send_admin_email
-    send_admin_email(current_app, f"[drone_team DB] Approved: {username}",
+    from ..mailer import send_email
+    send_email(current_app, email, f"[drone_team DB] Approved: {username}",
                      f"User '{username}' approved.\nTemporary password: {temp_password}")
     return render_template("admin_message.html", title="Approve User",
                            message=f"Approved '{username}'. Temp password generated.", ok=True)

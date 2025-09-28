@@ -1,8 +1,8 @@
 #drone_team/blueprints/auth.py
-from flask import Blueprint, render_template, request, redirect, url_for, current_app, abort
+from flask import Blueprint, render_template, request, redirect, url_for, current_app, flash
 from flask_login import login_user, logout_user, current_user
 from werkzeug.security import check_password_hash
-from ..db import get_user_by_username, create_user, _db
+from ..db import get_user_by_username, _db
 from ..mailer import send_admin_email
 import secrets
 
@@ -32,7 +32,13 @@ def logout_page():
 def register_page():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
-        email    = (request.form.get("email") or "").strip()
+        email = (request.form.get("email") or "").strip()
+        email_lc = email.lower() 
+        allowed = current_app.config.get("ALLOWED_SIGNUP_DOMAINS", ["army.mil"])
+        if not any(email_lc.endswith(f"@{d.lower()}") for d in allowed):
+            flash("Only army.mil emails can request access.", "error")
+            return redirect(url_for("auth.register_page"))
+
         reason   = (request.form.get("reason") or "").strip()
         if not username or not email:
             return redirect(url_for("auth.register_page", error="Username and email are required."))

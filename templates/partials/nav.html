@@ -1,18 +1,32 @@
 <nav>
   <ul>
-    <li><a href="{{ url_for('core.home') }}">Home</a></li>
-    <li><a href="{{ url_for('search.search') }}">Search</a></li>
-    <li><a href="{{ url_for('compare.compare') }}">Comparison Tool</a></li>
-    <li><a href="{{ url_for('aars.submit_aar') }}">Submit AAR</a></li>
-    <li><a href="{{ url_for('team.index') }}">US Army Drone Team</a></li>
-    <li><a href="{{ url_for('news.uas_news') }}">UAS News</a></li>
-    <li><a href="{{ url_for('software.index') }}">Software Database</a></li>
-    <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
-    {% if current_user.is_authenticated %}
-      <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
-    {% else %}
+    {# Not logged in: only show auth links #}
+    {% if not current_user.is_authenticated %}
       <li><a href="{{ url_for('auth.login_page') }}">Login</a></li>
       <li><a href="{{ url_for('auth.register_page') }}">Request Access</a></li>
+
+    {# Logged in, non-admin: show only the beta tabs #}
+    {% elif current_user.role != 'admin' %}
+      <li><a href="{{ url_for('core.home') }}">Home</a></li>
+      <li><a href="{{ url_for('team.index') }}">US Army Drone Team</a></li>
+      <li><a href="{{ url_for('team.apply') }}">Apply</a></li> 
+      <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
+      <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
+    {# Admin: show everything #}
+    {% else %}
+      <li><a href="{{ url_for('core.home') }}">Home</a></li>
+      <li><a href="{{ url_for('team.index') }}">US Army Drone Team</a></li>
+      <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
+
+      {# Admin-only tabs #}
+      <li><a href="{{ url_for('search.search') }}">Search</a></li>
+      <li><a href="{{ url_for('compare.compare') }}">Comparison Tool</a></li>
+      <li><a href="{{ url_for('aars.submit_aar') }}">Submit AAR</a></li>
+      <li><a href="{{ url_for('news.uas_news') }}">UAS News</a></li>
+      <li><a href="{{ url_for('software.index') }}">Software Database</a></li>
+
+      <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
     {% endif %}
   </ul>
 </nav>
+

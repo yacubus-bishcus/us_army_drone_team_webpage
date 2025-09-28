@@ -1,0 +1,7 @@
+{% with m = get_flashed_messages(with_categories=true) -%}{% if m -%}
+<div class="flash-container mt-3">
+  {% for c,msg in m -%}
+    <div class="alert alert-{{ 'danger' if c=='error' else c }} mb-2" role="alert">{{ msg }}</div>
+  {% endfor %}
+</div>
+{% endif -%}{% endwith -%}
