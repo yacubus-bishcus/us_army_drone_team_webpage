@@ -82,6 +82,7 @@ def create_app():
             return 
         # Endpoints that never require login (auth pages + static)
         public_endpoints = {
+            "core.home",
             "auth.login_page",
             "auth.register_page",
             "static",
