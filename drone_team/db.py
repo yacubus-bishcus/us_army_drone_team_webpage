@@ -34,7 +34,7 @@ def init_users_db(app):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 email TEXT NOT NULL,
-                reason TEXT,
+                sponsor_email TEXT,
                 token TEXT UNIQUE NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
                 created_at TEXT NOT NULL,
@@ -81,6 +81,13 @@ def update_user_password(app, user_id: int, new_plain_password: str):
     with con:
         con.execute("UPDATE users SET password_hash=? WHERE id=?", (pwd_hash, user_id))
     con.close()
+
+def get_user_count(app):
+    con = _db(app)
+    row = con.execute("SELECT COUNT(*) FROM users").fetchone()
+    con.close()
+    return row[0] if row else 0
+
     
 # Flask-Login loader
 from .extensions import login_manager

@@ -40,7 +40,28 @@
     border-radius:10px;
     box-shadow:0 4px 14px rgba(0,0,0,0.18);
   }
+  /* Center column media stack */
+  .media-stack{ display:grid; gap:1rem; place-items:center; }
 
+  /* Make video responsive, with a clean 16:9 box */
+  .media-stack .video {
+    width: 100%;
+    max-width: 560px;         /* matches your center max width */
+    aspect-ratio: 16 / 9;     /* keeps proper shape */
+    height: auto;
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+    background:#000;          /* looks nice before load */
+    overflow:hidden;
+  }
+
+  /* Ensure <video> fills the box nicely */
+  .media-stack .video video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
   /* Sticky side panels */
   .sticky{
     position: sticky;
@@ -73,7 +94,7 @@
     <!-- Hero / Summary -->
     <section class="card hero">
       <h1>US Army Drone Team</h1>
-      <p>{{ summary }}</p>
+      <p>{{ summary|safe }}</p>
       <div class="actions">
         <a class="btn" href="{{ url_for('team.apply') }}">Apply Now</a>
         <a class="btn" href="{{ url_for('team.calendar') }}">View Full Calendar</a>
@@ -99,17 +120,33 @@
           </section>
         </div>
       
-        <!-- CENTER: Flyer -->
-        <div class="col-center">
-          <section class="card team-flyer">
+      <!-- CENTER: Video above Flyer -->
+      <div class="col-center">
+        <section class="card team-flyer">
+          <div class="media-stack">
+            <!-- Video -->
+            <div class="video">
+              <video
+                controls
+                preload="metadata"
+                autoplay muted loop controls playsinline
+                poster="{{ url_for('static', filename='img/drone_team_logo.jpg') }}"
+              >
+                <source src="{{ url_for('static', filename='videos/drone_intro.mp4') }}" type="video/mp4">
+              </video>
+            </div>
+
+            <!-- Flyer (centered) -->
             <img
-              src="{{ url_for('static', filename='img/flyer.png') }}" 
+              src="{{ url_for('static', filename='img/flyer.png') }}"
               alt="U.S. Army Drone Team Flyer"
               class="team-flyer__img"
               loading="lazy"
               decoding="async">
-          </section>
-        </div>
+          </div>
+        </section>
+      </div>
+
       
         <!-- RIGHT: Team Structure & Roster -->
         <div class="col-right">

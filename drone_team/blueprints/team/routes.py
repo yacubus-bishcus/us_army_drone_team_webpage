@@ -16,10 +16,13 @@ ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 @login_required
 def index():
     summary = (
-        "The US Army Drone Team drives unmanned aerial systems (UAS) innovation to ensure technological \
-        and operational dominance in modern warfare through national and international competitions. \
-        By recruiting and training the next generation of drone operators, the Army Drone Team advances \
-        tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative.    "
+        "The US Army Drone Team drives unmanned aerial systems (UAS) innovation to ensure technological "
+        "and operational dominance in modern warfare through national and international competitions. "
+        "By recruiting and training the next generation of drone operators, the Army Drone Team advances "
+        "tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. "
+        "Apply now below to receive instructions on the Velocidrone closed track competition. Track password will be distributed no earlier than 15 October 2025."
+        'The official team SharePoint page can be found '
+        '<a href="https://armyeitaas.sharepoint-mil.us/:u:/r/teams/USArmyGoldenHawks/SitePages/Employee-onboarding-team-home.aspx?csf=1&web=1&web=1&e=3YXSGe" target="_blank">here</a>.'
     )
 
     hierarchy = {
@@ -117,7 +120,6 @@ def apply():
         # --- Applicant confirmation email --- 
         track_name = "US Army Drone Team Velicodrone Track" 
         track_url = "https://exampleurl.com"
-        track_pw = current_app.config.get("RACETRACK_PASSWORD", "example password")
         track_info = "info on track here"
 
         subject_user = "US Army Drone Team -- Application Received"
@@ -125,14 +127,18 @@ def apply():
         Thanks for applying to the US Army Drone Team. We've received your application and look
         forward to reviewing your Velocidrone performance. If you need help finding the track
         please refer to the information below or reach out to SSG Alwyne Smith with questions 
-        at XXX-XXX-XXXX.
+        at alwyne.a.smith2.mil@army.mil.
 
         Racetrack Access
         ----------------
         Track: {track_name}
         URL:   {track_url}
-        Password: {track_pw}
+        Password: Will be provided NET 150900OCT25 via email on file. 
 
+        Please check us out at our Microsoft Teams Sharepoint Page US Army Drone Team and 
+        Channel with team code: 
+        cy4otgm.
+        
         Notes:
         {track_info}
 

@@ -33,13 +33,17 @@ def register_page():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         email = (request.form.get("email") or "").strip()
+        sponsor_email = (request.form.get("sponsor_email") or "").strip() 
+        sponsor_email_lc = sponsor_email.lower() 
         email_lc = email.lower() 
         allowed = current_app.config.get("ALLOWED_SIGNUP_DOMAINS", ["army.mil"])
-        if not any(email_lc.endswith(f"@{d.lower()}") for d in allowed):
-            flash("Only army.mil emails can request access.", "error")
+        if not (
+            any(email_lc.endswith(f"@{d.lower()}") for d in allowed) or 
+            any(sponsor_email_lc.endswith(f"@{d.lower()}") for d in allowed)
+        ):
+            flash("Either primary email or sponsor email must have army.mil domain.", "error")
             return redirect(url_for("auth.register_page"))
 
-        reason   = (request.form.get("reason") or "").strip()
         if not username or not email:
             return redirect(url_for("auth.register_page", error="Username and email are required."))
         if get_user_by_username(current_app, username):
@@ -48,17 +52,17 @@ def register_page():
         con = _db(current_app)
         with con:
             con.execute("""
-                INSERT INTO pending_users (username,email,reason,token,status,created_at)
+                INSERT INTO pending_users (username,email,sponsor_email,token,status,created_at)
                 VALUES (?, ?, ?, ?, 'pending', datetime('now'))
                 ON CONFLICT(username) DO UPDATE SET
-                    email=excluded.email, reason=excluded.reason, token=excluded.token,
+                    email=excluded.email, sponsor_email=excluded.sponsor_email, token=excluded.token,
                     status='pending', created_at=datetime('now'), decided_at=NULL
-            """, (username, email, reason, token))
+            """, (username, email, sponsor_email, token))
         con.close()
         approve_url = url_for("admin.approve_user", token=token, _external=True)
         deny_url    = url_for("admin.deny_user", token=token, _external=True)
         subject = f"[drone_team DB] Access request: {username}"
-        body = (f"User requested access.\n\nUsername: {username}\nEmail: {email}\nReason:\n{reason}\n\n"
+        body = (f"User requested access.\n\nUsername: {username}\nEmail: {email}\nSponsor Email:\n{sponsor_email}\n\n"
                 f"Approve: {approve_url}\nDeny: {deny_url}\n\n(You must be signed in as an admin to use these links.)")
         send_admin_email(current_app, subject, body)
         return redirect(url_for("auth.login_page", message="Request submitted. The admin will review your request."))

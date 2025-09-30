@@ -13,7 +13,7 @@ def approve_user(token):
     if not row:
         con.close()
         return render_template("admin_message.html", title="Approve User", message="Invalid or already processed.", ok=False)
-    username = row["username"]; email = row["email"]
+    username = row["username"]; email = row["email"]; sponsor_email = row["sponsor_email"]
     import secrets
     temp_password = secrets.token_urlsafe(8)
     try: create_user(current_app, username, temp_password, role="user")
@@ -24,6 +24,8 @@ def approve_user(token):
     from ..mailer import send_email
     send_email(current_app, email, f"[drone_team DB] Approved: {username}",
                      f"User '{username}' approved.\nTemporary password: {temp_password}")
+    send_email(current_app, sponsor_email, f"[drone_team DB] Approved: {username}",
+                     f"User '{username}' has been approved. No further action required.")
     return render_template("admin_message.html", title="Approve User",
                            message=f"Approved '{username}'. Temp password generated.", ok=True)
 
@@ -38,8 +40,11 @@ def deny_user(token):
     with con:
         con.execute("UPDATE pending_users SET status='denied', decided_at=datetime('now') WHERE id=?", (row["id"],))
     con.close()
-    from ..mailer import send_admin_email
-    send_admin_email(current_app, f"[drone_team DB] Denied: {row['username']}",
-                     f"User '{row['username']}' denied.")
+    username = row["username"]; email = row["email"]; sponsor_email = row["sponsor_email"]
+    from ..mailer import send_admin_email, send_email
+    send_admin_email(current_app, f"[drone_team DB] Denied: {username}",
+                     f"User '{username}' denied.")
+    send_email(current_app, email, f"[drone_team DB] Denied: {username}", f"[drone_team DB] Denied: {username}")
+    send_email(current_app, sponsor_email, f"[drone_team DB] Denied: {username}", f"[drone_team DB] Denied: {username}")
     return render_template("admin_message.html", title="Deny User",
-                           message=f"Denied '{row['username']}'.", ok=True)
+                           message=f"Denied '{username}'.", ok=True)
