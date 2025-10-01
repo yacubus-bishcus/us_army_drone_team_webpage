@@ -71,6 +71,7 @@ def create_app():
     from .blueprints.software import software_bp
     from .blueprints.profile import bp as profile_bp
     from .blueprints.recommendations import bp as recs_bp
+    from .blueprints.debug import bp as debug_bp 
 
     app.register_blueprint(core_bp)
     app.register_blueprint(auth_bp)
@@ -83,6 +84,7 @@ def create_app():
     app.register_blueprint(software_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(recs_bp)
+    app.register_blueprint(debug_bp)
 
     # Global login wall (lets Home/Login/Register/Static through)
     @app.before_request
