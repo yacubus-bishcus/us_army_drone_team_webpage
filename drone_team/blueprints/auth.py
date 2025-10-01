@@ -6,8 +6,16 @@ from sqlalchemy import text
 from ..db import get_user_by_username, get_engine
 from ..mailer import send_admin_email
 import secrets
+import threading
 
 bp = Blueprint("auth", __name__)
+
+def _async_send(app, subject, body):
+    # Ensure app context for logging / config
+    with app.app_context():
+        ok = send_admin_email(app, subject, body)
+        if not ok:
+            app.logger.error("MAIL: send_admin_email returned False (email not sent).")
 
 @bp.route("/login", methods=["GET","POST"])
 def login_page():
@@ -62,9 +70,18 @@ def register_page():
                 text("""
                     INSERT INTO pending_users (username, email, sponsor_email, token, status, created_at)
                     VALUES (:u, :e, :s, :t, 'pending', CURRENT_TIMESTAMP)
+                    ON CONFLICT (username)
+                    DO UPDATE SET
+                        email = EXCLUDED.email,
+                        sponsor_email = EXCLUDED.sponsor_email,
+                        token = EXCLUDED.token,
+                        status = 'pending',
+                        created_at = CURRENT_TIMESTAMP
                 """),
-                {"u": username, "e": email, "s": sponsor_email, "t": token},
+                {"u": username, "e": email, "s": sponsor_email, "t": token}
             )
+
+            flash("Your registration request has been updated. Please check your email for approval instructions.", "info")
 
         # UPDATE status
         with engine.begin() as con:
@@ -83,6 +100,9 @@ def register_page():
         subject = f"[drone_team DB] Access request: {username}"
         body = (f"User requested access.\n\nUsername: {username}\nEmail: {email}\nSponsor Email:\n{sponsor_email}\n\n"
                 f"Approve: {approve_url}\nDeny: {deny_url}\n\n(You must be signed in as an admin to use these links.)")
-        send_admin_email(current_app, subject, body)
+        
+        # Fire off email in the background 
+        threading.Thread(target=_async_send, args=(current_app._get_current_object(), subject, body), daemon=True).start() 
+
         return redirect(url_for("auth.login_page", message="Request submitted. The admin will review your request."))
     return render_template("auth_request_access.html", error=request.args.get("error",""))

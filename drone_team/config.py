@@ -19,6 +19,9 @@ def _normalized_db_uri():
     # Fallback to SQLite
     return "sqlite:///drone_team.db"
 
+def strtobool(s: str, default=False):
+    return (s or str(default)).lower() in {"1","true","t","yes","y","on"}
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = _normalized_db_uri()   
@@ -42,6 +45,7 @@ class Config:
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "1").lower() in ("1", "true", "yes")
     MAIL_USERNAME = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER=os.environ.get("MAIL_DEFAULT_SENDER") or os.environ.get("MAIL_USERNAME"),
     # allow only these email domains to self-register
     ALLOWED_SIGNUP_DOMAINS = os.getenv("ALLOWED_SIGNUP_DOMAINS", "army.mil").split(",")
 
