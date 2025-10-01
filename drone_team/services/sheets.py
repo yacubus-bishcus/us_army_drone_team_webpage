@@ -34,7 +34,7 @@ def append_application_row(app, row_dict):
         ws = sh.add_worksheet(title=ws_name, rows=100, cols=40)
         # Write header row once
         headers = [
-            "timestamp", "app_id", "username", "name", "grade", "unit", "email", "phone",
+            "timestamp", "app_id", "username", "name", "grade", "unit", "callsign", "email", "phone",
             "years_experience", "primary_platforms", "skills",
             "deploying_12mo", "parental_leave_12mo", "tdy_restrictions",
             "statement", "video_path"
@@ -48,6 +48,7 @@ def append_application_row(app, row_dict):
         row_dict.get("name", ""),
         row_dict.get("grade", ""),
         row_dict.get("unit", ""),
+        row_dict.get("callsign",""),
         row_dict.get("email", ""),
         row_dict.get("phone", ""),
         row_dict.get("years_experience", ""),

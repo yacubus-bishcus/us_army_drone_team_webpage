@@ -9,7 +9,7 @@ ATTACHMENT_HARD_LIMIT_MB = 20 # typical email caps
 
 HEADERS = [
     "app_id", "created_at", "username",
-    "name", "unit", "email", "phone",
+    "name", "unit", "callsign", "email", "phone",
     "years_experience", "primary_platforms", "skills",
     "availability", "statement", "video_path"
 ]
@@ -45,7 +45,8 @@ def append_application(app, row: dict):
         "created_at": datetime.utcnow().isoformat(timespec="seconds"),
         "username": row.get("username",""),
         "name": row.get("name",""),
-        "unit": row.get("unit",""),
+        "unit": row.get("unit", ""),
+        "callsign": row.get("callsign", ""),
         "email": row.get("email",""),
         "phone": row.get("phone",""),
         "years_experience": row.get("years_experience",""),
@@ -68,6 +69,7 @@ def _format_app_email_body(row: dict) -> str:
         f"Applicant: {row.get('name','')} (user: {row.get('username','')})",
         f"Grade: {row.get('grade','')}",
         f"Unit: {row.get('unit','')}",
+        f"Callsign: {row.get('callsign', '')}",
         f"Email: {row.get('email','')}",
         f"Phone: {row.get('phone','')}",
         f"Years Experience: {row.get('years_experience','')}",

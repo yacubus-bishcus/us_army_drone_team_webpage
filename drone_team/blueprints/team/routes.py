@@ -67,6 +67,7 @@ def apply():
             "name": (request.form.get("name") or "").strip(),
             "grade": (request.form.get("grade") or "").strip(),
             "unit": (request.form.get("unit") or "").strip(),
+            "callsign": (request.form.get("callsign") or "").strip(),
             "email": (request.form.get("email") or "").strip(),
             "phone": (request.form.get("phone") or "").strip(),
             "years_experience": (request.form.get("years_experience") or "").strip(),
@@ -79,7 +80,7 @@ def apply():
         }
 
         # Basic validation
-        missing = [k for k in ("name", "grade", "unit", "email") if not data[k]]
+        missing = [k for k in ("name", "grade", "unit", "email", "callsign") if not data[k]]
         if missing:
             flash(f"Missing required fields: {', '.join(missing)}", "error")
             return redirect(url_for("team.apply"))
@@ -118,29 +119,17 @@ def apply():
             current_app.logger.exception("Failed to email application: %s", e)
 
         # --- Applicant confirmation email --- 
-        track_name = "US Army Drone Team Velicodrone Track" 
-        track_url = "https://exampleurl.com"
-        track_info = "info on track here"
-
         subject_user = "US Army Drone Team -- Application Received"
         body_user = f"""Hi {data.get("name") or 'Applicant'},
         Thanks for applying to the US Army Drone Team. We've received your application and look
         forward to reviewing your Velocidrone performance. If you need help finding the track
         please refer to the information below or reach out to SSG Alwyne Smith with questions 
-        at alwyne.a.smith2.mil@army.mil.
-
-        Racetrack Access
-        ----------------
-        Track: {track_name}
-        URL:   {track_url}
-        Password: Will be provided NET 150900OCT25 via email on file. 
+        at alwyne.a.smith2.mil@army.mil. The track will become available on 15 October 2025. You
+        will received the track name and password no earlier than 150900OCT25.  
 
         Please check us out at our Microsoft Teams Sharepoint Page US Army Drone Team and 
         Channel with team code: 
         cy4otgm.
-        
-        Notes:
-        {track_info}
 
         v/r,
         US Army Drone Team
