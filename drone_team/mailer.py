@@ -3,12 +3,16 @@
 from email.message import EmailMessage
 import os, smtplib, time, ssl, traceback
 from flask import current_app
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail as sendgrip_mail
+from google.auth import api_key
 
 try:
     from flask_mail import Mail, Message
     HAS_FLASK_MAIL = True
 except Exception:
     HAS_FLASK_MAIL = False
+
 
 def _admin_recipients(app):
     # Prefer a comma-separated env/config value, else ADMIN_EMAIL
@@ -29,6 +33,46 @@ def _smtp_send(app, msg: EmailMessage):
         if app.config.get("MAIL_USERNAME") and app.config.get("MAIL_PASSWORD"):
             s.login(app.config["MAIL_USERNAME"], app.config["MAIL_PASSWORD"])
         s.send_message(msg)
+
+def send_email_sendgrid(app, to, subject: str, body: str) -> bool:
+    message = sendgrip_mail(
+        from_email=os.environ.get('MAIL_USERNAME'),
+        to_emails=to,
+        subject=subject,
+        html_content=body)
+
+    try: 
+        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        if not api_key:
+            app.logger.error("SENDGRID_API_KEY not set; cannot send mail.")
+            return False
+        sg.send(message)
+    except Exception as e:
+        current_app.logger.error("SendGrid API error: body=%s", body[:500])
+    return True 
+
+def send_admin_email_sendgrid(app, subject: str, body: str, *, max_retries: int = 2, backoff_sec: float = 1.5)->bool:
+    message = sendgrip_mail(
+        from_email=os.environ.get('MAIL_USERNAME'),
+        to_emails=os.environ.get('MAIL_USERNAME'),
+        subject=subject,
+        html_content=body)
+
+    recipients = _admin_recipients(app)
+    if not recipients:
+        app.logger.warning("MAIL: No admin recipients configured (MAIL_ADMIN_RECIPIENTS / ADMIN_EMAIL).")
+        return False
+
+
+    try:
+        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        if not api_key:
+            app.logger.error("SENDGRID_API_KEY not set; cannot send mail.")
+            return False
+        sg.send(message)
+    except Exception as e:
+        current_app.logger.error("SendGrid API error: body=%s", body[:500])
+    return True 
 
 def send_email(app, to, subject, body, attachments=None, cc=None, bcc=None):
     """

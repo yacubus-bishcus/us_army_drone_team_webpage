@@ -9,8 +9,15 @@ from ...services import team as svc
 from ...services import sheets as sheets_svc 
 from drone_team import mailer 
 from ...db import insert_team_application 
+import threading
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
+
+def _async_send_sendgrid(app, to, subject, body):
+    with app.app_context():
+        ok = mailer.send_email_sendgrid(app, to, subject, body)
+        if not ok:
+            app.logger.error("SendGrid mail failed (returned False).")
 
 # --- LANDING PAGE ("/") ---
 @team_bp.route("/", methods=["GET"])
@@ -158,12 +165,8 @@ def apply():
         v/r,
         US Army Drone Team
         """
-
-        try:
-            mailer.send_email(current_app, to=data["email"], subject=subject_user, body=body_user)
-        
-        except Exception as e:
-            current_app.logger.exception("Failed to email applicant confirmation: %s", e)
+        app = current_app._get_current_object() 
+        threading.Thread(target=_async_send_sendgrid, args=(app, data["email"], subject_user, body_user), daemon=True).start()
 
         flash("Application submitted. A confirmation email has been sent to you. Thank you!", "success")
         # return to team home page 

@@ -4,7 +4,7 @@ from flask_login import login_user, logout_user, current_user
 from werkzeug.security import check_password_hash
 from sqlalchemy import text 
 from ..db import get_user_by_username, get_engine
-from ..mailer import send_admin_email
+from ..mailer import send_admin_email, send_admin_email_sendgrid
 import secrets
 import threading
 
@@ -16,6 +16,13 @@ def _async_send(app, subject, body):
         ok = send_admin_email(app, subject, body)
         if not ok:
             app.logger.error("MAIL: send_admin_email returned False (email not sent).")
+
+def _async_send_sendgrid(app, subject, body):
+    with app.app_context():
+        ok = send_admin_email_sendgrid(app, subject, body)
+        if not ok:
+            app.logger.error("SendGrid mail failed (returned False).")
+
 
 @bp.route("/login", methods=["GET","POST"])
 def login_page():
@@ -76,24 +83,14 @@ def register_page():
                         sponsor_email = EXCLUDED.sponsor_email,
                         token = EXCLUDED.token,
                         status = 'pending',
-                        created_at = CURRENT_TIMESTAMP
+                        created_at = CURRENT_TIMESTAMP,
+                        decided_at = NULL
                 """),
                 {"u": username, "e": email, "s": sponsor_email, "t": token}
             )
 
-            flash("Your registration request has been updated. Please check your email for approval instructions.", "info")
 
-        # UPDATE status
-        with engine.begin() as con:
-            con.execute(
-                text("""
-                    UPDATE pending_users
-                    SET status = :st, decided_at = CURRENT_TIMESTAMP
-                    WHERE token = :t
-                """),
-                {"st": "approved", "t": token},
-            )
-        
+            flash("Your registration request has been updated. Please check your email for approval instructions.", "info")
 
         approve_url = url_for("admin.approve_user", token=token, _external=True)
         deny_url    = url_for("admin.deny_user", token=token, _external=True)
@@ -102,7 +99,7 @@ def register_page():
                 f"Approve: {approve_url}\nDeny: {deny_url}\n\n(You must be signed in as an admin to use these links.)")
         
         # Fire off email in the background 
-        threading.Thread(target=_async_send, args=(current_app._get_current_object(), subject, body), daemon=True).start() 
+        threading.Thread(target=_async_send_sendgrid, args=(current_app._get_current_object(), subject, body), daemon=True).start() 
 
         return redirect(url_for("auth.login_page", message="Request submitted. The admin will review your request."))
     return render_template("auth_request_access.html", error=request.args.get("error",""))
