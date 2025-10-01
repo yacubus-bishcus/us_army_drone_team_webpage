@@ -2,7 +2,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app, flash
 from flask_login import login_user, logout_user, current_user
 from werkzeug.security import check_password_hash
-from ..db import get_user_by_username, _db
+from sqlalchemy import text 
+from ..db import get_user_by_username, get_engine
 from ..mailer import send_admin_email
 import secrets
 
@@ -49,16 +50,34 @@ def register_page():
         if get_user_by_username(current_app, username):
             return redirect(url_for("auth.login_page", message="Account already exists. Please sign in."))
         token = secrets.token_urlsafe(24)
-        con = _db(current_app)
-        with con:
-            con.execute("""
-                INSERT INTO pending_users (username,email,sponsor_email,token,status,created_at)
-                VALUES (?, ?, ?, ?, 'pending', datetime('now'))
-                ON CONFLICT(username) DO UPDATE SET
-                    email=excluded.email, sponsor_email=excluded.sponsor_email, token=excluded.token,
-                    status='pending', created_at=datetime('now'), decided_at=NULL
-            """, (username, email, sponsor_email, token))
-        con.close()
+
+        engine = get_engine(current_app)
+        sql = text("SELECT id, username, email, sponsor_email, token, status, created_at, decided_at FROM pending_users WHERE token = :t")
+        with engine.connect() as con:
+            row = con.execute(sql, {"t": token}).mappings().first()
+
+        # INSERT
+        with engine.begin() as con:
+            con.execute(
+                text("""
+                    INSERT INTO pending_users (username, email, sponsor_email, token, status, created_at)
+                    VALUES (:u, :e, :s, :t, 'pending', CURRENT_TIMESTAMP)
+                """),
+                {"u": username, "e": email, "s": sponsor_email, "t": token},
+            )
+
+        # UPDATE status
+        with engine.begin() as con:
+            con.execute(
+                text("""
+                    UPDATE pending_users
+                    SET status = :st, decided_at = CURRENT_TIMESTAMP
+                    WHERE token = :t
+                """),
+                {"st": "approved", "t": token},
+            )
+        
+
         approve_url = url_for("admin.approve_user", token=token, _external=True)
         deny_url    = url_for("admin.deny_user", token=token, _external=True)
         subject = f"[drone_team DB] Access request: {username}"

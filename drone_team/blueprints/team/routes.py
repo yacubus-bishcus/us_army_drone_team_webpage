@@ -8,6 +8,7 @@ from . import team_bp
 from ...services import team as svc
 from ...services import sheets as sheets_svc 
 from drone_team import mailer 
+from ...db import insert_team_application 
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 
@@ -107,11 +108,34 @@ def apply():
         row_for_email = saved if isinstance(saved, dict) else data 
         
         # Append data to google sheets 
+        sheets_ok = True 
         try:
             sheets_svc.append_application_row(current_app, row_for_email)
         except Exception as e:
+            sheets_ok = False 
             current_app.logger.exception("Failed to append to Google Sheet: %s", e)
             
+        
+        # 2) Write to Postgres (authoritative)
+        db_ok = True
+        try:
+            insert_team_application(current_app, row_for_email)
+        except Exception as e:
+            db_ok = False
+            current_app.logger.error("DB insert failed: %s", e)
+            flash("We had trouble saving your application. Please try again.", "error")
+            return render_template("team_apply.html", form=request.form)
+        
+        # UX messages based on dual-write result
+        if db_ok and sheets_ok:
+            flash("Application received!", "success")
+        elif db_ok and not sheets_ok:
+            flash("Application saved. (Sheet sync delayed—admin has your submission.)", "warning")
+        else:
+            # db_ok false path handled above with early return
+            pass
+
+
         # --- Admin Email ---
         try:
             svc.email_application_via_mailer(current_app, row_for_email)

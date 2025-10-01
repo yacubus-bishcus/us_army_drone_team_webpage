@@ -1,5 +1,6 @@
 pandas 
 flask 
+gunicorn
 flask-login
 python-dotenv
 flask_sqlalchemy
@@ -8,3 +9,6 @@ requests==2.32.3
 beautifulsoup4==4.12.3
 gspread==6.1.4
 google-auth==2.35.0
+SQLAlchemy>=2.0
+psycopg[binary]>=3.2
+psycopg2[binary]
