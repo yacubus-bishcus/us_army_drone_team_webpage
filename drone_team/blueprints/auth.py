@@ -7,6 +7,7 @@ from ..db import get_user_by_username, get_engine
 from ..mailer import send_admin_email, send_admin_email_sendgrid
 import secrets
 import threading
+import os 
 
 bp = Blueprint("auth", __name__)
 
@@ -99,7 +100,10 @@ def register_page():
                 f"Approve: {approve_url}\nDeny: {deny_url}\n\n(You must be signed in as an admin to use these links.)")
         
         # Fire off email in the background 
-        threading.Thread(target=_async_send_sendgrid, args=(current_app._get_current_object(), subject, body), daemon=True).start() 
+        if os.environ.get('EMAIL_AVAILABLE'):
+            threading.Thread(target=_async_send, args=(current_app._get_current_object(), subject, body), daemon=True).start() 
+        else:
+            threading.Thread(target=_async_send_sendgrid, args=(current_app._get_current_object(), subject, body), daemon=True).start() 
 
         return redirect(url_for("auth.login_page", message="Request submitted. The admin will review your request."))
     return render_template("auth_request_access.html", error=request.args.get("error",""))

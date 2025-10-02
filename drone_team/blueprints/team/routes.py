@@ -10,8 +10,16 @@ from ...services import sheets as sheets_svc
 from drone_team import mailer 
 from ...db import insert_team_application 
 import threading
+import os 
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
+
+def _async_send(app, to, subject, body):
+    # Ensure app context for logging / config
+    with app.app_context():
+        ok = mailer.send_email(app, to, subject, body)
+        if not ok:
+            app.logger.error("MAIL: send_email returned False (email not sent).")
 
 def _async_send_sendgrid(app, to, subject, body):
     with app.app_context():
@@ -166,7 +174,10 @@ def apply():
         US Army Drone Team
         """
         app = current_app._get_current_object() 
-        threading.Thread(target=_async_send_sendgrid, args=(app, data["email"], subject_user, body_user), daemon=True).start()
+        if os.environ.get('EMAIL_AVAILABLE'):
+            threading.Thread(target=_async_send, args=(app, data["email"], subject_user, body_user), daemon=True).start() 
+        else:
+            threading.Thread(target=_async_send_sendgrid, args=(app, data["email"], subject_user, body_user), daemon=True).start()
 
         flash("Application submitted. A confirmation email has been sent to you. Thank you!", "success")
         # return to team home page 
