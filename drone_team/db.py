@@ -32,30 +32,67 @@ class User(UserMixin):
 # --------------------
 _engine: Engine | None = None
 
+
+def _strtobool(value: Optional[str], default: bool = False) -> bool:
+    truthy = {"1", "true", "t", "yes", "y", "on"}
+    falsy = {"0", "false", "f", "no", "n", "off"}
+    if value is None:
+        return default
+    value = value.strip().lower()
+    if value in truthy:
+        return True
+    if value in falsy:
+        return False
+    return default
+
+
+def _sandbox_enabled(app) -> bool:
+    if app is not None:
+        return bool(app.config.get("SANDBOX_DATA_MODE", False))
+    return _strtobool(os.getenv("SANDBOX_DATA_MODE"), default=False)
+
+
+def _sandbox_sqlite_url(app) -> Optional[str]:
+    if app is not None:
+        url = app.config.get("SANDBOX_SQLITE_URL")
+        if url:
+            return url
+    return os.getenv("SANDBOX_SQLITE_URL")
+
 def _sqlite_url_from_app(app) -> str:
     data_dir = Path(app.config["DATA_DIR"])
     data_dir.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{(data_dir / 'users.db').as_posix()}"
 
 def get_engine(app=None) -> Engine:
-    """
-    Returns a cached Engine. If DATABASE_URL is set, uses that (Postgres recommended).
-    Otherwise falls back to your existing SQLite file in DATA_DIR/users.db.
-    """
+    """Return a cached SQLAlchemy engine respecting sandbox mode."""
+
     global _engine
-    if _engine is not None:
-        return _engine
 
-    url = os.getenv("DATABASE_URL")
-    if not url:
-        if app is None:
-            # last resort fallback if app isn't provided; assume local sqlite in ./data
-            url = f"sqlite:///{(Path('data') / 'users.db').as_posix()}"
-        else:
-            url = _sqlite_url_from_app(app)
+    sandbox_mode = _sandbox_enabled(app)
 
-    # pool_pre_ping helps keep long-lived connections fresh (esp. on PaaS)
-    _engine = create_engine(url, pool_pre_ping=True, future=True)
+    if sandbox_mode:
+        target_url = _sandbox_sqlite_url(app)
+        if not target_url:
+            if app is None:
+                target_url = f"sqlite:///{(Path('data') / 'users.db').as_posix()}"
+            else:
+                target_url = _sqlite_url_from_app(app)
+    else:
+        target_url = os.getenv("DATABASE_URL")
+        if not target_url:
+            if app is None:
+                target_url = f"sqlite:///{(Path('data') / 'users.db').as_posix()}"
+            else:
+                target_url = _sqlite_url_from_app(app)
+
+    if _engine is not None and str(_engine.url) != str(target_url):
+        _engine.dispose()
+        _engine = None
+
+    if _engine is None:
+        _engine = create_engine(str(target_url), pool_pre_ping=True, future=True)
+
     return _engine
 
 # --------------------
