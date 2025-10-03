@@ -12,6 +12,8 @@ bp = Blueprint("profile", __name__)
 def view():
     message = request.args.get("message", "")
     error   = request.args.get("error", "")
+    raw_force_change = request.args.get("force_password_change")
+    force_change = str(raw_force_change).lower() in {"1", "true", "yes", "on"}
 
     # Quick stats (no schema changes): number of AARs authored
     df = aars_svc.load_df(current_app)
@@ -43,10 +45,20 @@ def view():
         from ..db import get_user_by_id
         refreshed = get_user_by_id(current_app, current_user.id)
         current_user.password_hash = refreshed.password_hash  # update session model
+        current_user.must_change_password = refreshed.must_change_password
 
         return redirect(url_for("profile.view", message="Password updated successfully."))
 
-    return render_template("profile.html",
-                           message=message, error=error,
-                           username=current_user.username,
-                           my_aar_count=my_count)
+    if getattr(current_user, "must_change_password", False) and not force_change:
+        force_change = True
+        if not message:
+            message = "Please change your temporary password before continuing."
+
+    return render_template(
+        "profile.html",
+        message=message,
+        error=error,
+        username=current_user.username,
+        my_aar_count=my_count,
+        force_password_change=force_change,
+    )
