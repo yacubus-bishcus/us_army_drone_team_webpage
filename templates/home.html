@@ -45,6 +45,9 @@
                         background: rgba(20,30,40,0.6); color: #e8eef4;
                         border-radius: 10px; cursor: pointer; }
       .actions button:hover { filter: brightness(1.1); }
+      .support-link { text-align: right; font-size: 0.85rem; margin-top: -4px; }
+      .support-link a { color: #8fbaff; text-decoration: none; }
+      .support-link a:hover, .support-link a:focus { text-decoration: underline; }
       .alerts { max-width: 900px; margin: 0 auto; }
       .alert { padding: 10px 14px; border-radius: 10px; border: 1px solid #566372; margin: 8px 0; text-align: center; }
       .alert-success { background: var(--success-bg); border-color: var(--success-brd); }
@@ -132,6 +135,9 @@
             <a class="btn" href="{{ url_for('auth.register_page') }}" style="margin-left:8px; text-decoration:none;">
               Request Access
             </a>
+          </div>
+          <div class="support-link">
+            <a href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a>
           </div>
         </form>
       </div>
