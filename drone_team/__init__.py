@@ -102,7 +102,7 @@ def create_app():
     @app.before_request
     def redirect_www_subdomain():
         host = request.headers.get("Host", "")
-        if host.lower() == "www.usarmydroneteam.onrendor.com":
+        if host.lower() == "www.usarmydroneteam.onrender.com" or host.lower() == "usarmydroneteam.onrendor.com":
             target_url = request.url.replace("//www.", "//", 1)
             return redirect(target_url, code=301)
 
