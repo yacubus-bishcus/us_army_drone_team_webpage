@@ -9,6 +9,8 @@
     .wrap { width: min(420px, 92%); margin: 3rem auto; background:#fff; border:1px solid #bbb; border-radius:10px; padding:1rem; }
     h1 { margin-top:0; text-align:center; }
     .alert { padding:10px; border:1px solid #e6b2b2; background:#fff0f0; border-radius:8px; margin-bottom:10px; text-align:center; }
+    .alert.info { background:#f0fff0; border-color:#b2e6b2; }
+    .alert.error { background:#fff0f0; border-color:#e6b2b2; }
     form { display:grid; gap:10px; }
     label { font-size:.9rem; }
     input { padding:10px; border:1px solid #bbb; border-radius:8px; }
@@ -22,8 +24,19 @@
 <body>
   <div class="wrap">
     <h1>Sign In</h1>
-    {% if message %}<div class="alert" style="background:#f0fff0; border-color:#b2e6b2;">{{ message }}</div>{% endif %}
-    {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% set ns = namespace(seen=[]) %}
+        {% for category, msg in messages %}
+          {% if msg not in ns.seen %}
+            <div class="alert {{ category }}">{{ msg }}</div>
+            {% set ns.seen = ns.seen + [msg] %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% if message %}<div class="alert info">{{ message }}</div>{% endif %}
+    {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
     <form method="POST" action="{{ url_for('auth.login_page', next=request.args.get('next') or '') }}">
       <div>
         <label for="username">Username</label>
