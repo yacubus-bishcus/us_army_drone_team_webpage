@@ -11,6 +11,12 @@ import os
 
 bp = Blueprint("auth", __name__)
 
+
+@bp.route("/forgot-password")
+def forgot_password():
+    return render_template("auth_forgot_password.html")
+
+
 def _async_send(app, subject, body):
     # Ensure app context for logging / config
     with app.app_context():
