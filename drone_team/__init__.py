@@ -116,6 +116,8 @@ def create_app():
             "core.home",
             "auth.login_page",
             "auth.register_page",
+            "auth.forgot_password",
+            "auth.reset_password",
             "static",
             "core.healthz",
         }

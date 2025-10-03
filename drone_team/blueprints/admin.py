@@ -36,6 +36,7 @@ def approve_user(token):
             temp_password,
             role="user",
             must_change_password=True,
+            email=email,
         )
     except ValueError:
         pass
