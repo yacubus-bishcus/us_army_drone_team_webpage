@@ -359,9 +359,10 @@ def update_user_password(app, user_id: int, new_plain_password: str, *, clear_mu
     with engine.begin() as con:
         params = {"p": pwd_hash, "i": user_id}
         if clear_must_change:
+            params["m"] = False
             con.execute(
                 text(
-                    "UPDATE users SET password_hash = :p, must_change_password = 0 WHERE id = :i"
+                    "UPDATE users SET password_hash = :p, must_change_password = :m WHERE id = :i"
                 ),
                 params,
             )
