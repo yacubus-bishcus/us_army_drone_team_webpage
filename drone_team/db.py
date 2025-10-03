@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.engine import Engine
 from typing import Dict, Any, Optional, List 
 
@@ -11,11 +11,12 @@ from typing import Dict, Any, Optional, List
 # User model (unchanged)
 # --------------------
 class User(UserMixin):
-    def __init__(self, id, username, password_hash, role="user"):
+    def __init__(self, id, username, password_hash, role="user", must_change_password=False):
         self.id = id
         self.username = username
         self.password_hash = password_hash
         self.role = role
+        self.must_change_password = must_change_password
 
 # --------------------
 # Engine factory
@@ -66,7 +67,8 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
-                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                must_change_password INTEGER NOT NULL DEFAULT 0
             )
             """
         else:
@@ -77,7 +79,8 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 username VARCHAR(255) UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 role VARCHAR(64) NOT NULL DEFAULT 'user',
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                must_change_password BOOLEAN NOT NULL DEFAULT FALSE
             )
             """
     elif table == "pending_users":
@@ -118,6 +121,16 @@ def init_users_db(app):
     with engine.begin() as con:
         con.execute(text(_ddl_for(engine, "users")))
         con.execute(text(_ddl_for(engine, "pending_users")))
+
+    # Ensure legacy databases pick up the must_change_password column
+    inspector = inspect(engine)
+    user_columns = {col["name"] for col in inspector.get_columns("users")}
+    if "must_change_password" not in user_columns:
+        column_def = "BOOLEAN NOT NULL DEFAULT FALSE"
+        if engine.dialect.name == "sqlite":
+            column_def = "INTEGER NOT NULL DEFAULT 0"
+        with engine.begin() as con:
+            con.execute(text(f"ALTER TABLE users ADD COLUMN must_change_password {column_def}"))
 
 def init_team_applications(app):
     engine = get_engine(app)
@@ -184,43 +197,61 @@ def insert_team_application(app, data: dict) -> int:
 def _row_to_user(row) -> User | None:
     if row is None:
         return None
-    return User(row.id, row.username, row.password_hash, getattr(row, "role", "user"))
+    return User(
+        row.id,
+        row.username,
+        row.password_hash,
+        getattr(row, "role", "user"),
+        bool(getattr(row, "must_change_password", False)),
+    )
 
 def get_user_by_username(app, username: str) -> User | None:
     engine = get_engine(app)
-    sql = text("SELECT id, username, password_hash, role FROM users WHERE username = :u LIMIT 1")
+    sql = text(
+        "SELECT id, username, password_hash, role, must_change_password "
+        "FROM users WHERE username = :u LIMIT 1"
+    )
     with engine.connect() as con:
         row = con.execute(sql, {"u": username}).mappings().first()
     return _row_to_user(row)
 
 def get_user_by_id(app, uid: int) -> User | None:
     engine = get_engine(app)
-    sql = text("SELECT id, username, password_hash, role FROM users WHERE id = :i LIMIT 1")
+    sql = text(
+        "SELECT id, username, password_hash, role, must_change_password "
+        "FROM users WHERE id = :i LIMIT 1"
+    )
     with engine.connect() as con:
         row = con.execute(sql, {"i": uid}).mappings().first()
     return _row_to_user(row)
 
-def create_user(app, username: str, password: str, role: str = "user") -> User:
+def create_user(app, username: str, password: str, role: str = "user", *, must_change_password: bool = False) -> User:
     if get_user_by_username(app, username):
         raise ValueError("Username already exists.")
     pwd_hash = generate_password_hash(password)
     engine = get_engine(app)
     sql = text("""
-        INSERT INTO users (username, password_hash, role, created_at)
-        VALUES (:u, :p, :r, CURRENT_TIMESTAMP)
-        RETURNING id, username, password_hash, role
+        INSERT INTO users (username, password_hash, role, created_at, must_change_password)
+        VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m)
+        RETURNING id, username, password_hash, role, must_change_password
     """)
     # SQLite before 3.35 doesn't support RETURNING. We fallback if needed.
     with engine.begin() as con:
         try:
-            row = con.execute(sql, {"u": username, "p": pwd_hash, "r": role}).mappings().first()
+            row = con.execute(
+                sql,
+                {"u": username, "p": pwd_hash, "r": role, "m": must_change_password},
+            ).mappings().first()
             if row:
                 return _row_to_user(row)
         except Exception:
             # Fallback for SQLite: do regular insert then select
             con.execute(
-                text("INSERT INTO users (username, password_hash, role, created_at) VALUES (:u, :p, :r, CURRENT_TIMESTAMP)"),
-                {"u": username, "p": pwd_hash, "r": role},
+                text(
+                    "INSERT INTO users (username, password_hash, role, created_at, must_change_password) "
+                    "VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m)"
+                ),
+                {"u": username, "p": pwd_hash, "r": role, "m": int(must_change_password)},
             )
     return get_user_by_username(app, username)
 
@@ -231,12 +262,23 @@ def seed_admin_user(app):
         create_user(app, admin_username, app.config["ADMIN_INITIAL_PASSWORD"], role="admin")
         print(f"[INIT] Admin created: {admin_username} (set ADMIN_INITIAL_PASSWORD env)")
 
-def update_user_password(app, user_id: int, new_plain_password: str):
+def update_user_password(app, user_id: int, new_plain_password: str, *, clear_must_change: bool = True):
     engine = get_engine(app)
     pwd_hash = generate_password_hash(new_plain_password)
     with engine.begin() as con:
-        con.execute(text("UPDATE users SET password_hash = :p WHERE id = :i"),
-                    {"p": pwd_hash, "i": user_id})
+        params = {"p": pwd_hash, "i": user_id}
+        if clear_must_change:
+            con.execute(
+                text(
+                    "UPDATE users SET password_hash = :p, must_change_password = 0 WHERE id = :i"
+                ),
+                params,
+            )
+        else:
+            con.execute(
+                text("UPDATE users SET password_hash = :p WHERE id = :i"),
+                params,
+            )
 
 def get_user_count(app) -> int:
     engine = get_engine(app)

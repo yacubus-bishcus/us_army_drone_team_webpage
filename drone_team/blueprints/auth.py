@@ -40,6 +40,14 @@ def login_page():
         if not user or not check_password_hash(user.password_hash, password):
             return redirect(url_for("auth.login_page", error="Invalid credentials."))
         login_user(user, remember=True)
+        if getattr(user, "must_change_password", False):
+            return redirect(
+                url_for(
+                    "profile.view",
+                    force_password_change=1,
+                    message="Temporary password detected. Please update it now.",
+                )
+            )
         return redirect(request.args.get("next") or url_for("core.home", message=f"Welcome, {user.username}!"))
     return render_template("auth_login.html",
                            error=request.args.get("error",""),

@@ -30,7 +30,13 @@ def approve_user(token):
 
     # Create user if missing (ignore if already exists)
     try:
-        create_user(current_app, username, temp_password, role="user")
+        create_user(
+            current_app,
+            username,
+            temp_password,
+            role="user",
+            must_change_password=True,
+        )
     except ValueError:
         pass
 
