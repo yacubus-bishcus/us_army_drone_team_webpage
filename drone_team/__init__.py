@@ -23,17 +23,29 @@ def create_app():
     app = Flask(__name__, template_folder="../templates", static_folder="../static")
     app.config.from_object(Config)
 
-    # ★ Prefer DATABASE_URL (Postgres) if provided; otherwise keep your SQLite-in-instance behavior
+    sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+    if sandbox_mode:
+        app.logger.info("SANDBOX_DATA_MODE enabled; routing database work to SQLite and skipping external sinks")
+
+    # ★ Prefer DATABASE_URL (Postgres) if provided and sandbox mode is off; otherwise keep SQLite behavior
     db_url_env = os.getenv("DATABASE_URL")
-    if db_url_env:
-        # Example: for Supabase/managed PG you may need sslmode=require in the URL
-        app.config["SQLALCHEMY_DATABASE_URI"] = db_url_env
+    if db_url_env and not sandbox_mode:
+        # Config._normalized_db_uri already normalizes the URL, so no extra work needed
+        pass
     else:
         # keep your existing SQLite path logic
         os.makedirs(app.instance_path, exist_ok=True)
-        if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///drone_team.db"):
-            db_path = os.path.join(app.instance_path, "drone_team.db")
-            app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
+        uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        if uri.startswith("sqlite:///"):
+            db_path = uri[len("sqlite:///"):]
+            if db_path == ":memory:":
+                pass
+            elif os.path.isabs(db_path):
+                pass
+            else:
+                db_filename = os.path.basename(db_path) or "drone_team.db"
+                db_path = os.path.join(app.instance_path, db_filename)
+                app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
 
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
 

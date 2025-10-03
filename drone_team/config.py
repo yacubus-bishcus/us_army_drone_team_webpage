@@ -2,8 +2,21 @@
 import os, sys
 from pathlib import Path
 
+# --- Helpers
+def strtobool(s: str, default=False):
+    return (s or str(default)).lower() in {"1","true","t","yes","y","on"}
+
+def _sandbox_enabled():
+    return strtobool(os.getenv("SANDBOX_DATA_MODE", "0"))
+
+def _sandbox_sqlite_url():
+    return os.getenv("SANDBOX_SQLITE_URL", "sqlite:///drone_team_debug.db")
+
 # --- DB URL normalization
 def _normalized_db_uri():
+    if _sandbox_enabled():
+        return _sandbox_sqlite_url()
+
     url = os.getenv("DATABASE_URL")
     if url:
         # Normalize scheme for SQLAlchemy 2.x + psycopg 3
@@ -11,7 +24,7 @@ def _normalized_db_uri():
             url = "postgresql+psycopg://" + url[len("postgres://"):]
         elif url.startswith("postgresql://"):
             url = "postgresql+psycopg://" + url[len("postgresql://"):]
-        # Ensure SSL if not explicitly given 
+        # Ensure SSL if not explicitly given
         if "sslmode=" not in url:
             sep = "&" if "?" in url else "?"
             url = f"{url}{sep}sslmode=require"
@@ -19,12 +32,9 @@ def _normalized_db_uri():
     # Fallback to SQLite
     return "sqlite:///drone_team.db"
 
-def strtobool(s: str, default=False):
-    return (s or str(default)).lower() in {"1","true","t","yes","y","on"}
-
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY")
-    SQLALCHEMY_DATABASE_URI = _normalized_db_uri()   
+    SQLALCHEMY_DATABASE_URI = _normalized_db_uri()
     SQLALCHEMY_TRACKMODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
@@ -34,6 +44,8 @@ class Config:
     }
     BASE_DIR   = Path(__file__).resolve().parent.parent
     DATA_DIR   = os.getenv("DATA_DIR", str(BASE_DIR / "data"))
+    SANDBOX_DATA_MODE = _sandbox_enabled()
+    SANDBOX_SQLITE_URL = _sandbox_sqlite_url()
 
     # Calendar Settings 
     GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "")
