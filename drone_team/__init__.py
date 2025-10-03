@@ -1,5 +1,5 @@
 # drone_team/__init__.py
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_login import current_user
 from dotenv import load_dotenv
 from pathlib import Path
@@ -23,17 +23,29 @@ def create_app():
     app = Flask(__name__, template_folder="../templates", static_folder="../static")
     app.config.from_object(Config)
 
-    # ★ Prefer DATABASE_URL (Postgres) if provided; otherwise keep your SQLite-in-instance behavior
+    sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+    if sandbox_mode:
+        app.logger.info("SANDBOX_DATA_MODE enabled; routing database work to SQLite and skipping external sinks")
+
+    # ★ Prefer DATABASE_URL (Postgres) if provided and sandbox mode is off; otherwise keep SQLite behavior
     db_url_env = os.getenv("DATABASE_URL")
-    if db_url_env:
-        # Example: for Supabase/managed PG you may need sslmode=require in the URL
-        app.config["SQLALCHEMY_DATABASE_URI"] = db_url_env
+    if db_url_env and not sandbox_mode:
+        # Config._normalized_db_uri already normalizes the URL, so no extra work needed
+        pass
     else:
         # keep your existing SQLite path logic
         os.makedirs(app.instance_path, exist_ok=True)
-        if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///drone_team.db"):
-            db_path = os.path.join(app.instance_path, "drone_team.db")
-            app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
+        uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        if uri.startswith("sqlite:///"):
+            db_path = uri[len("sqlite:///"):]
+            if db_path == ":memory:":
+                pass
+            elif os.path.isabs(db_path):
+                pass
+            else:
+                db_filename = os.path.basename(db_path) or "drone_team.db"
+                db_path = os.path.join(app.instance_path, db_filename)
+                app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + db_path
 
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
 
@@ -86,6 +98,14 @@ def create_app():
     app.register_blueprint(recs_bp)
     app.register_blueprint(debug_bp)
 
+    # Redirect www subdomain traffic to the apex domain for Render deployment
+    @app.before_request
+    def redirect_www_subdomain():
+        host = request.headers.get("Host", "")
+        if host.lower() == "www.usarmydroneteam.onrender.com" or host.lower() == "usarmydroneteam.onrendor.com":
+            target_url = request.url.replace("//www.", "//", 1)
+            return redirect(target_url, code=301)
+
     # Global login wall (lets Home/Login/Register/Static through)
     @app.before_request
     def access_control():
@@ -96,6 +116,8 @@ def create_app():
             "core.home",
             "auth.login_page",
             "auth.register_page",
+            "auth.forgot_password",
+            "auth.reset_password",
             "static",
             "core.healthz",
         }

@@ -30,7 +30,14 @@ def approve_user(token):
 
     # Create user if missing (ignore if already exists)
     try:
-        create_user(current_app, username, temp_password, role="user")
+        create_user(
+            current_app,
+            username,
+            temp_password,
+            role="user",
+            must_change_password=True,
+            email=email,
+        )
     except ValueError:
         pass
 
@@ -43,7 +50,8 @@ def approve_user(token):
         current_app,
         email,
         f"[drone_team DB] Approved: {username}",
-        f"User '{username}' approved.\nTemporary password: {temp_password}"
+        f"User '{username}' approved.\nTemporary password: {temp_password}\n\n"
+        f"Upon sign in with temporary password you will be required to change password. Don't forget to Apply to the Team on the website at US Army Drone Team --> Apply"
     )
     if sponsor_email:
         send_email(

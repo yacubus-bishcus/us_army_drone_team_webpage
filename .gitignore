@@ -7,3 +7,5 @@ drone_venv/
 drone_team/__pycache__
 data/data/drone_team_apps.csv
 skynet.db
+scripts/army_drone_team_qr.png
+drone_team_debug.db 

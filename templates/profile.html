@@ -38,6 +38,9 @@
     <div class="alerts">
       {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
       {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+      {% if force_password_change %}
+        <div class="alert alert-error">Your account is using a temporary password. Please set a new password to continue.</div>
+      {% endif %}
     </div>
 
     <h1>Profile</h1>
@@ -47,6 +50,11 @@
       <!-- Change password -->
       <div class="card">
         <h2 style="margin-top:0;">Change Password</h2>
+        {% if force_password_change %}
+          <p class="meta" style="color:#a94442;">
+            For security, you must update your password before accessing the rest of the site.
+          </p>
+        {% endif %}
         <form method="POST" action="{{ url_for('profile.view') }}">
           <div>
             <label for="current_password">Current password</label>

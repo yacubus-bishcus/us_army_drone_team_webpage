@@ -16,6 +16,10 @@ def _client_from_env():
 def append_application_row(app, row_dict):
     """Append a single row to the configured worksheet.
        row_dict is your application dict (fields below)."""
+    if app.config.get("SANDBOX_DATA_MODE"):
+        app.logger.info("Sheets append skipped; SANDBOX_DATA_MODE enabled")
+        return
+
     if os.getenv("GOOGLE_SHEETS_ENABLED", "false").lower() != "true":
         app.logger.info("Sheets append skipped; GOOGLE_SHEETS_ENABLED != true")
         return

@@ -38,7 +38,7 @@ def index():
         "tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. "
         "Apply now below to receive instructions on the Velocidrone closed track competition. Track password will be distributed no earlier than 15 October 2025."
         'The official team SharePoint page can be found '
-        '<a href="https://armyeitaas.sharepoint-mil.us/:u:/r/teams/USArmyGoldenHawks/SitePages/Employee-onboarding-team-home.aspx?csf=1&web=1&web=1&e=3YXSGe" target="_blank">here</a>.'
+        '<a href="https://armyeitaas.sharepoint-mil.us/:u:/t/USArmyGoldenHawks/EZDhwGB7X9pNnu3rUfrio30BHdELBnK-iSsySi7YV4RwoQ?e=Sbwk9y" target="_blank">here</a>.'
     )
 
     hierarchy = {
@@ -165,7 +165,7 @@ def apply():
         please refer to the information below or reach out to SSG Alwyne Smith with questions 
         at alwyne.a.smith2.mil@army.mil. The track will become available on 15 October 2025. You
         will received the track name and password no earlier than 150900OCT25.  
-
+        
         Please check us out at our Microsoft Teams Sharepoint Page US Army Drone Team and 
         Channel with team code: 
         cy4otgm.

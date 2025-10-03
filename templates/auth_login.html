@@ -13,6 +13,9 @@
     label { font-size:.9rem; }
     input { padding:10px; border:1px solid #bbb; border-radius:8px; }
     button, a.btn { padding:10px 14px; border:1px solid #999; background:#eee; border-radius:8px; cursor:pointer; text-decoration:none; color:inherit; text-align:center; }
+    .support { text-align:right; font-size:0.85rem; }
+    .support a { color:#0645ad; text-decoration:none; }
+    .support a:hover, .support a:focus { text-decoration:underline; }
     .row { display:flex; gap:10px; justify-content:space-between; align-items:center; }
   </style>
 </head>
@@ -29,6 +32,9 @@
       <div>
         <label for="password">Password</label>
         <input id="password" name="password" type="password" required />
+      </div>
+      <div class="support">
+        <a href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a>
       </div>
       <div class="row">
         <button type="submit">Sign In</button>
