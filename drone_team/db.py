@@ -11,12 +11,21 @@ from typing import Dict, Any, Optional, List
 # User model (unchanged)
 # --------------------
 class User(UserMixin):
-    def __init__(self, id, username, password_hash, role="user", must_change_password=False):
+    def __init__(
+        self,
+        id,
+        username,
+        password_hash,
+        role="user",
+        must_change_password=False,
+        email: str | None = None,
+    ):
         self.id = id
         self.username = username
         self.password_hash = password_hash
         self.role = role
         self.must_change_password = must_change_password
+        self.email = email
 
 # --------------------
 # Engine factory
@@ -66,6 +75,7 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                email TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 must_change_password INTEGER NOT NULL DEFAULT 0
@@ -78,6 +88,7 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                email VARCHAR(255),
                 role VARCHAR(64) NOT NULL DEFAULT 'user',
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 must_change_password BOOLEAN NOT NULL DEFAULT FALSE
@@ -111,6 +122,29 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 decided_at TIMESTAMP
             )
             """
+    elif table == "password_reset_tokens":
+        if is_sqlite:
+            return """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token TEXT UNIQUE NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                expires_at TEXT NOT NULL,
+                used_at TEXT
+            )
+            """
+        else:
+            return """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                used_at TIMESTAMP
+            )
+            """
     raise ValueError(f"Unknown table: {table}")
 
 def init_users_db(app):
@@ -121,6 +155,7 @@ def init_users_db(app):
     with engine.begin() as con:
         con.execute(text(_ddl_for(engine, "users")))
         con.execute(text(_ddl_for(engine, "pending_users")))
+        con.execute(text(_ddl_for(engine, "password_reset_tokens")))
 
     # Ensure legacy databases pick up the must_change_password column
     inspector = inspect(engine)
@@ -131,6 +166,12 @@ def init_users_db(app):
             column_def = "INTEGER NOT NULL DEFAULT 0"
         with engine.begin() as con:
             con.execute(text(f"ALTER TABLE users ADD COLUMN must_change_password {column_def}"))
+    if "email" not in user_columns:
+        column_def = "VARCHAR(255)"
+        if engine.dialect.name == "sqlite":
+            column_def = "TEXT"
+        with engine.begin() as con:
+            con.execute(text(f"ALTER TABLE users ADD COLUMN email {column_def}"))
 
 def init_team_applications(app):
     engine = get_engine(app)
@@ -203,12 +244,13 @@ def _row_to_user(row) -> User | None:
         row.password_hash,
         getattr(row, "role", "user"),
         bool(getattr(row, "must_change_password", False)),
+        getattr(row, "email", None),
     )
 
 def get_user_by_username(app, username: str) -> User | None:
     engine = get_engine(app)
     sql = text(
-        "SELECT id, username, password_hash, role, must_change_password "
+        "SELECT id, username, password_hash, role, must_change_password, email "
         "FROM users WHERE username = :u LIMIT 1"
     )
     with engine.connect() as con:
@@ -218,29 +260,57 @@ def get_user_by_username(app, username: str) -> User | None:
 def get_user_by_id(app, uid: int) -> User | None:
     engine = get_engine(app)
     sql = text(
-        "SELECT id, username, password_hash, role, must_change_password "
+        "SELECT id, username, password_hash, role, must_change_password, email "
         "FROM users WHERE id = :i LIMIT 1"
     )
     with engine.connect() as con:
         row = con.execute(sql, {"i": uid}).mappings().first()
     return _row_to_user(row)
 
-def create_user(app, username: str, password: str, role: str = "user", *, must_change_password: bool = False) -> User:
-    if get_user_by_username(app, username):
+def get_user_by_email(app, email: str) -> User | None:
+    engine = get_engine(app)
+    sql = text(
+        "SELECT id, username, password_hash, role, must_change_password, email "
+        "FROM users WHERE lower(email) = lower(:e) LIMIT 1"
+    )
+    with engine.connect() as con:
+        row = con.execute(sql, {"e": email}).mappings().first()
+    return _row_to_user(row)
+
+
+def create_user(
+    app,
+    username: str,
+    password: str,
+    role: str = "user",
+    *,
+    must_change_password: bool = False,
+    email: str | None = None,
+) -> User:
+    existing = get_user_by_username(app, username)
+    if existing:
+        if email and getattr(existing, "email", None) != email:
+            update_user_email(app, existing.id, email)
         raise ValueError("Username already exists.")
     pwd_hash = generate_password_hash(password)
     engine = get_engine(app)
     sql = text("""
-        INSERT INTO users (username, password_hash, role, created_at, must_change_password)
-        VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m)
-        RETURNING id, username, password_hash, role, must_change_password
+        INSERT INTO users (username, password_hash, role, created_at, must_change_password, email)
+        VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m, :e)
+        RETURNING id, username, password_hash, role, must_change_password, email
     """)
     # SQLite before 3.35 doesn't support RETURNING. We fallback if needed.
     with engine.begin() as con:
         try:
             row = con.execute(
                 sql,
-                {"u": username, "p": pwd_hash, "r": role, "m": must_change_password},
+                {
+                    "u": username,
+                    "p": pwd_hash,
+                    "r": role,
+                    "m": must_change_password,
+                    "e": email,
+                },
             ).mappings().first()
             if row:
                 return _row_to_user(row)
@@ -248,10 +318,16 @@ def create_user(app, username: str, password: str, role: str = "user", *, must_c
             # Fallback for SQLite: do regular insert then select
             con.execute(
                 text(
-                    "INSERT INTO users (username, password_hash, role, created_at, must_change_password) "
-                    "VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m)"
+                    "INSERT INTO users (username, password_hash, role, created_at, must_change_password, email) "
+                    "VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m, :e)"
                 ),
-                {"u": username, "p": pwd_hash, "r": role, "m": int(must_change_password)},
+                {
+                    "u": username,
+                    "p": pwd_hash,
+                    "r": role,
+                    "m": int(must_change_password),
+                    "e": email,
+                },
             )
     return get_user_by_username(app, username)
 
@@ -259,8 +335,23 @@ def seed_admin_user(app):
     admin_username = app.config["ADMIN_USERNAME"]
     admin = get_user_by_username(app, admin_username)
     if not admin:
-        create_user(app, admin_username, app.config["ADMIN_INITIAL_PASSWORD"], role="admin")
+        create_user(
+            app,
+            admin_username,
+            app.config["ADMIN_INITIAL_PASSWORD"],
+            role="admin",
+            email=app.config.get("ADMIN_EMAIL"),
+        )
         print(f"[INIT] Admin created: {admin_username} (set ADMIN_INITIAL_PASSWORD env)")
+
+
+def update_user_email(app, user_id: int, email: str | None):
+    engine = get_engine(app)
+    with engine.begin() as con:
+        con.execute(
+            text("UPDATE users SET email = :e WHERE id = :i"),
+            {"e": email, "i": user_id},
+        )
 
 def update_user_password(app, user_id: int, new_plain_password: str, *, clear_must_change: bool = True):
     engine = get_engine(app)
@@ -296,6 +387,90 @@ def list_users(app, limit: int = 200, offset: int = 0) -> List[Dict[str, Any]]:
     with engine.connect() as con:
         rows = con.execute(sql, {"lim": limit, "off": offset}).mappings().all()
     return [dict(r) for r in rows]
+
+
+def _parse_dt(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.replace("Z", "+00:00")
+        try:
+            from datetime import datetime
+
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    return value
+
+
+def create_password_reset_token(app, user_id: int, *, expires_minutes: int = 60) -> str:
+    from datetime import datetime, timedelta
+    import secrets
+
+    engine = get_engine(app)
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(minutes=expires_minutes)
+    expires_str = expires_at.replace(microsecond=0).isoformat()
+
+    with engine.begin() as con:
+        # Invalidate any older tokens for this user
+        con.execute(
+            text(
+                "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP "
+                "WHERE user_id = :u AND used_at IS NULL"
+            ),
+            {"u": user_id},
+        )
+        # Remove expired tokens to keep table tidy
+        con.execute(
+            text(
+                "DELETE FROM password_reset_tokens WHERE used_at IS NULL AND expires_at < :now"
+            ),
+            {"now": datetime.utcnow().replace(microsecond=0).isoformat()},
+        )
+        con.execute(
+            text(
+                "INSERT INTO password_reset_tokens (user_id, token, expires_at) "
+                "VALUES (:u, :t, :e)"
+            ),
+            {"u": user_id, "t": token, "e": expires_str},
+        )
+    return token
+
+
+def get_password_reset_request(app, token: str) -> Dict[str, Any] | None:
+    engine = get_engine(app)
+    sql = text(
+        """
+        SELECT prt.id, prt.user_id, prt.token, prt.created_at, prt.expires_at, prt.used_at,
+               u.username, u.email
+          FROM password_reset_tokens prt
+          JOIN users u ON u.id = prt.user_id
+         WHERE prt.token = :t
+         LIMIT 1
+        """
+    )
+    with engine.connect() as con:
+        row = con.execute(sql, {"t": token}).mappings().first()
+    if not row:
+        return None
+    data = dict(row)
+    data["expires_at"] = _parse_dt(data.get("expires_at"))
+    data["created_at"] = _parse_dt(data.get("created_at"))
+    data["used_at"] = _parse_dt(data.get("used_at"))
+    return data
+
+
+def mark_password_reset_used(app, token: str):
+    engine = get_engine(app)
+    with engine.begin() as con:
+        con.execute(
+            text(
+                "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP "
+                "WHERE token = :t"
+            ),
+            {"t": token},
+        )
 
 def set_user_role(app, user_id: int, role: str) -> int:
     engine = get_engine(app)
