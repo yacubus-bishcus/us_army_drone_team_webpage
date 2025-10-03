@@ -165,7 +165,7 @@ def apply():
         please refer to the information below or reach out to SSG Alwyne Smith with questions 
         at alwyne.a.smith2.mil@army.mil. The track will become available on 15 October 2025. You
         will received the track name and password no earlier than 150900OCT25.  
-
+        
         Please check us out at our Microsoft Teams Sharepoint Page US Army Drone Team and 
         Channel with team code: 
         cy4otgm.

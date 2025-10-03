@@ -7,12 +7,6 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail as sendgrip_mail
 from google.auth import api_key
 
-try:
-    from flask_mail import Mail, Message
-    HAS_FLASK_MAIL = True
-except Exception:
-    HAS_FLASK_MAIL = False
-
 
 def _admin_recipients(app):
     # Prefer a comma-separated env/config value, else ADMIN_EMAIL
@@ -116,33 +110,7 @@ def send_admin_email(app, subject: str, body: str, *, max_retries: int = 2, back
         or app.config.get("MAIL_USERNAME")
         or os.environ.get("MAIL_USERNAME")
     )
-# Prefer Flask-Mail if present and configured
-    if HAS_FLASK_MAIL:
-        try:
-            mail = app.extensions.get("mail")
-            if mail is None:
-                # lazy init if not created elsewhere
-                mail = Mail(app)
 
-            msg = Message(subject=subject, recipients=recipients, body=body, sender=sender)
-
-            # Simple retry with backoff
-            for attempt in range(1, max_retries + 1):
-                try:
-                    with mail.connect() as conn:
-                        conn.send(msg)
-                    return True
-                except Exception as e:
-                    app.logger.error("MAIL (Flask-Mail) attempt %s failed: %s", attempt, e, exc_info=True)
-                    if attempt < max_retries:
-                        time.sleep(backoff_sec * attempt)
-            return False
-
-        except Exception as e:
-            app.logger.error("MAIL (Flask-Mail setup) failed: %s", e, exc_info=True)
-            # fall through to smtplib fallback
-
-    # Fallback: raw smtplib (TLS or SSL depending on config)
     try:
         host = app.config.get("MAIL_SERVER", "localhost")
         port = int(app.config.get("MAIL_PORT", "587"))
