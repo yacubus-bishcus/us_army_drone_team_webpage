@@ -1,5 +1,5 @@
 # drone_team/__init__.py
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_login import current_user
 from dotenv import load_dotenv
 from pathlib import Path
@@ -85,6 +85,14 @@ def create_app():
     app.register_blueprint(profile_bp)
     app.register_blueprint(recs_bp)
     app.register_blueprint(debug_bp)
+
+    # Redirect www subdomain traffic to the apex domain for Render deployment
+    @app.before_request
+    def redirect_www_subdomain():
+        host = request.headers.get("Host", "")
+        if host.lower() == "www.usarmydroneteam.onrendor.com":
+            target_url = request.url.replace("//www.", "//", 1)
+            return redirect(target_url, code=301)
 
     # Global login wall (lets Home/Login/Register/Static through)
     @app.before_request
