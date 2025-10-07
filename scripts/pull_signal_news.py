@@ -122,22 +122,27 @@ def _parse_signal_cli_output(raw: str, target_group: Optional[str]) -> List[Sign
 
 @lru_cache(maxsize=1)
 def _signal_cli_supports_group_flag(binary: str) -> bool:
-    """Return True if `signal-cli receive` advertises a `--group` flag."""
-
+    """Return True if `signal-cli receive` advertises a `--group` or `-g` flag."""
     help_cmd = [binary, "receive", "--help"]
     try:
         proc = subprocess.run(help_cmd, check=True, capture_output=True, text=True)
+        help_text = (proc.stdout or "") + (proc.stderr or "")
     except FileNotFoundError:
         raise
     except PermissionError:
         raise
     except subprocess.CalledProcessError as exc:
-        output = (exc.stdout or "") + (exc.stderr or "")
-        logging.debug("Failed to detect --group support (exit code %s): %s", exc.returncode, output)
-        return False
+        # Some tools print usage to stdout/stderr with non-zero exit; still inspect it.
+        help_text = (exc.stdout or "") + (exc.stderr or "")
+        logging.debug(
+            "Failed to detect group flag (exit code %s): %s",
+            exc.returncode, help_text
+        )
 
-    help_text = (proc.stdout or "") + (proc.stderr or "")
-    return "--group" in help_text
+    # Match either '--group' or '-g' as standalone options (e.g., "-g, --group")
+    # Start-of-line or whitespace before, and a word boundary after.
+    pattern = r'(?m)(^|\s)(?:--group\b|-g\b)'
+    return re.search(pattern, help_text) is not None
 
 
 def _build_signal_cli_cmd(
@@ -162,6 +167,7 @@ def _fetch_signal_messages(
     group_id: Optional[str],
     since_timestamp: Optional[int],
     receive_limit: Optional[int],
+    ignore_cli_support_flag: Optional[bool],
 ) -> List[SignalMessage]:
     cmd = list(
         _build_signal_cli_cmd(
@@ -171,13 +177,21 @@ def _fetch_signal_messages(
             receive_limit=receive_limit,
         )
     )
-    if group_id and _signal_cli_supports_group_flag(binary):
+
+    if group_id:
         # `receive --group <id>` restricts output to a single group.
-        cmd.extend(["--group", group_id])
-    elif group_id:
-        logging.info(
-            "signal-cli receive on this host does not support --group; fetching all chats and filtering client-side"
-        )
+        if ignore_cli_support_flag or _signal_cli_supports_group_flag(binary):
+            cmd.extend(["-g", group_id])
+            logging.info("running receive -g <id> restricting output to a single group.")
+        
+        else:
+            # signal-cli does not support --group or -g and cli_support_flag not ignored 
+            logging.info(
+                "signal-cli receive on this host does not support --group or -g; fetching all chats and filtering client-side"
+            )
+    else:
+        # no group id fetching all chats and filtering client-side 
+        logging.info("No group ID. Fetching all chats and filtering client-side")
 
     logging.info("Running: %s", " ".join(cmd))
     try:
@@ -229,6 +243,7 @@ def ingest_signal_urls(
     dry_run: bool = False,
     state_file_override: Optional[str] = None,
     signal_cli_override: Optional[str]=None,
+    ignore_cli_support_flag: bool =False,
 ) -> int:
     binary = signal_cli_override or os.environ.get("SIGNAL_CLI_BIN", "signal-cli")
     phone = os.environ.get("SIGNAL_PHONE_NUMBER")
@@ -264,6 +279,7 @@ def ingest_signal_urls(
                 group_id=group_id,
                 since_timestamp=last_ts,
                 receive_limit=receive_limit,
+                ignore_cli_support_flag=ignore_cli_support_flag,
             )
 
             if not messages:
@@ -320,6 +336,7 @@ def ingest_signal_urls(
         group_id=group_id,
         since_timestamp=last_ts,
         receive_limit=receive_limit,
+        ignore_cli_support_flag=ignore_cli_support_flag,
     )
 
     if not messages:
@@ -364,6 +381,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dest="log_file",
         help="Optional path to write script logs",
     )
+    parser.add_argument(
+        "--ignore_cli_support_flag",
+        action="store_true",
+        help=("Optional override for the cli supporting --group or -g flags"),
+    )
     args = parser.parse_args(argv)
 
     logging_kwargs = {"level": logging.INFO, "format": "%(asctime)s %(levelname)s %(message)s"}
@@ -380,6 +402,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dry_run=args.dry_run,
         state_file_override=args.state_file,
         signal_cli_override=args.signal_cli,
+        ignore_cli_support_flag=args.ignore_cli_support_flag 
     )
 
 
