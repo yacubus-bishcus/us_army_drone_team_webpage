@@ -12,3 +12,4 @@ drone_team_debug.db
 us_army_drone_team_webpage.code-workspace
 /bin/
 signal_log.log
+data/data/news_articles.csv

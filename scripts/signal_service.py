@@ -7,9 +7,8 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional, Sequence
-
-import pull_signal_news
-import signal_group_reader
+from . import pull_signal_news
+from . import signal_group_reader
 
 
 def _resolve_added_by(value: Optional[str], fallback: Optional[str]) -> str:
