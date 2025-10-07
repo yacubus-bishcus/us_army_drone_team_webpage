@@ -40,6 +40,10 @@ Use the optional `SIGNAL_SENDER` variable (or the equivalent
 `--sender=+15555555555` CLI flag) to focus on a specific contact or your own
 "Note to Self" conversation. For ad-hoc reprocessing of older history you can
 pass `--since` with either an ISO 8601 datetime or a millisecond epoch
+timestamp. On older `signal-cli` releases (for example 0.13.20) the
+utility does not expose a native `--since` flag; in that case the script
+downloads the available history and performs the timestamp filtering
+locally before ingesting anything:
 timestamp:
 
 ```bash

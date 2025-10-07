@@ -184,15 +184,39 @@ def _signal_cli_supports_group_flag(binary: str) -> bool:
     return re.search(pattern, help_text) is not None
 
 
+@lru_cache(maxsize=1)
+def _signal_cli_supports_since_flag(binary: str) -> bool:
+    """Return True if `signal-cli receive` advertises a `--since` flag."""
+    help_cmd = [binary, "receive", "--help"]
+    try:
+        proc = subprocess.run(help_cmd, check=True, capture_output=True, text=True)
+        help_text = (proc.stdout or "") + (proc.stderr or "")
+    except FileNotFoundError:
+        raise
+    except PermissionError:
+        raise
+    except subprocess.CalledProcessError as exc:
+        help_text = (exc.stdout or "") + (exc.stderr or "")
+        logging.debug(
+            "Failed to detect since flag (exit code %s): %s",
+            exc.returncode,
+            help_text,
+        )
+
+    pattern = r"(?m)(^|\s)--since\b"
+    return re.search(pattern, help_text) is not None
+
+
 def _build_signal_cli_cmd(
     binary: str,
     phone_number: str,
     *,
     since_timestamp: Optional[int] = None,
     receive_limit: Optional[int] = None,
+    supports_since: bool = True,
 ) -> Sequence[str]:
     cmd = [binary, "--output=json", "--username", phone_number, "receive", "--ignore-attachments"]
-    if since_timestamp:
+    if since_timestamp and supports_since:
         cmd.extend(["--since", str(since_timestamp)])
     if receive_limit:
         cmd.extend(["--max-messages", str(receive_limit)])
@@ -209,12 +233,21 @@ def _fetch_signal_messages(
     receive_limit: Optional[int],
     ignore_cli_support_flag: Optional[bool],
 ) -> List[SignalMessage]:
+    supports_since = True
+    if since_timestamp:
+        supports_since = _signal_cli_supports_since_flag(binary)
+        if not supports_since:
+            logging.info(
+                "signal-cli receive on this host does not support --since; fetching full history and filtering client-side",
+            )
+
     cmd = list(
         _build_signal_cli_cmd(
             binary,
             phone_number,
             since_timestamp=since_timestamp,
             receive_limit=receive_limit,
+            supports_since=supports_since,
         )
     )
 
@@ -252,6 +285,14 @@ def _fetch_signal_messages(
         raise
 
     messages = _parse_signal_cli_output(proc.stdout, group_id, sender)
+    if since_timestamp and not supports_since:
+        before = len(messages)
+        messages = [msg for msg in messages if msg.timestamp >= since_timestamp]
+        logging.info(
+            "Filtered %d message(s) older than %s client-side due to missing --since support",
+            before - len(messages),
+            since_timestamp,
+        )
     logging.info("Fetched %d candidate messages", len(messages))
     return messages
 
