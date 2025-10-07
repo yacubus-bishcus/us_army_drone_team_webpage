@@ -3,10 +3,13 @@
 {% block content %}
 <style>
   .page{display:grid;grid-template-columns:1fr 360px;gap:1.25rem;align-items:start}
+  .news-section{margin-bottom:2.5rem}
+  .news-section h2{margin:1.5rem 0 0.75rem;font-size:1.5rem}
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
   .card{border:1px solid #ddd;border-radius:12px;overflow:hidden;background:#fff}
   .card img{width:100%;height:180px;object-fit:cover;display:block}
   .card .body{padding:.75rem 1rem}
+  .card .source{font-size:.8rem;color:#555;margin-top:.35rem}
   .sidebar{position:sticky;top:1rem;border:1px solid #ddd;border-radius:12px;padding:1rem;background:#fafafa}
   .admin-add{margin:0 0 1rem 0;border:1px dashed #bbb;padding:.75rem;border-radius:10px;background:#fff}
   .admin-add .row{display:flex;gap:.5rem;align-items:center}
@@ -32,33 +35,49 @@
       </div>
     {% endif %}
 
-    <div class="cards">
-      {% for n in news_items %}
-      <article class="card">
-        <img src="{{ n.image }}" alt="{{ n.title }}">
-        <div class="body">
-          {% if n.link %}
-            <h3><a href="{{ n.link }}" target="_blank" rel="noopener">{{ n.title }}</a></h3>
-          {% else %}
-            <h3>{{ n.title }}</h3>
-          {% endif %}
-          <p>{{ n.summary }}</p>
-      
-          {# Admin-only controls for CSV-backed items #}
-          {% if current_user.is_authenticated and current_user.role == 'admin' and n.source == 'csv' and n.id %}
-            <form action="{{ url_for('news.delete_article', article_id=n.id) }}" method="post" style="margin-top:.5rem">
-              <button type="submit"
-                      onclick="return confirm('Delete this article card?');"
-                      style="padding:6px 10px;border:1px solid #c33;background:#f8d7da;border-radius:8px;cursor:pointer">
-                Delete
-              </button>
-            </form>
-          {% endif %}
-        </div>
-      </article>
-      
-      {% endfor %}
-    </div>
+    {% if not has_articles %}
+      <p>No Signal-sourced news articles are available yet. Check back soon!</p>
+    {% endif %}
+
+    {% for section in news_sections %}
+      <div class="news-section" id="section-{{ section.key|replace(' ', '-')|replace('/', '-')|replace(':', '-') }}">
+        <h2>{{ section.title }}</h2>
+        {% if section.items %}
+          <div class="cards">
+          {% for n in section.items %}
+            <article class="card">
+              <img src="{{ n.image }}" alt="{{ n.title }}">
+              <div class="body">
+                {% if n.link %}
+                  <h3><a href="{{ n.link }}" target="_blank" rel="noopener">{{ n.title }}</a></h3>
+                {% else %}
+                  <h3>{{ n.title }}</h3>
+                {% endif %}
+                <p>{{ n.summary }}</p>
+
+                {% if n.group %}
+                  <div class="source">Source: {{ n.group }}</div>
+                {% endif %}
+
+                {# Admin-only controls for CSV-backed items #}
+                {% if current_user.is_authenticated and current_user.role == 'admin' and n.source == 'csv' and n.id %}
+                  <form action="{{ url_for('news.delete_article', article_id=n.id) }}" method="post" style="margin-top:.5rem">
+                    <button type="submit"
+                            onclick="return confirm('Delete this article card?');"
+                            style="padding:6px 10px;border:1px solid #c33;background:#f8d7da;border-radius:8px;cursor:pointer">
+                      Delete
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+          </div>
+        {% else %}
+          <p>No articles available from this source yet.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
 
     <!-- Useful links section -->
     <div class="useful-links">
