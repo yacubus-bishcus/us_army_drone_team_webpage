@@ -37,7 +37,7 @@ def index():
         "By recruiting and training the next generation of drone operators, the Army Drone Team advances "
         "tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. "
         "Apply now below to receive instructions on the Velocidrone closed track competition. Track password will be distributed no earlier than 15 October 2025."
-        'The official team SharePoint page can be found '
+        ' The official team SharePoint page can be found '
         '<a href="https://armyeitaas.sharepoint-mil.us/:u:/t/USArmyGoldenHawks/EZDhwGB7X9pNnu3rUfrio30BHdELBnK-iSsySi7YV4RwoQ?e=Sbwk9y" target="_blank">here</a>.'
     )
 

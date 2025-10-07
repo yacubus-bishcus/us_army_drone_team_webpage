@@ -19,7 +19,9 @@
   .hero{ display:grid; gap:.75rem; }
   .hero h1{ margin:.25rem 0; }
   .actions{ display:flex; gap:.5rem; flex-wrap:wrap; }
-  .btn{ padding:10px 14px; border:1px solid var(--border-strong); background:var(--muted); border-radius:var(--radius); cursor:pointer; text-decoration:none; color:inherit; }
+  .btn{ padding:10px 14px; border:1px solid var(--border-strong); background:var(--muted); 
+    border-radius:var(--radius); cursor:pointer; text-decoration:none; color:inherit; 
+    display:inline-flex; align-items:center; gap:.35rem; }
   .btn:hover{ filter:brightness(.97); }
 
   /* --- Three-column layout (left = events, center = flyer, right = roster) --- */
@@ -42,6 +44,70 @@
   }
   /* Center column media stack */
   .media-stack{ display:grid; gap:1rem; place-items:center; }
+
+  .info-card{
+    width:100%;
+    max-width:560px;
+    padding:2rem;
+    background:linear-gradient(135deg, rgba(17, 25, 40, 0.92), rgba(10, 12, 16, 0.86));
+    color:#f5f7fa;
+    border-radius:16px;
+    box-shadow:0 18px 32px -12px rgba(15, 23, 42, 0.4);
+    border:1px solid rgba(148, 163, 184, 0.25);
+    display:grid;
+    gap:1.5rem;
+  }
+
+  .info-card h2{
+    margin:0;
+    font-size:1.8rem;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+
+  .info-section{
+    display:grid;
+    gap:.35rem;
+  }
+
+  .info-section h3{
+    margin:0;
+    font-size:1rem;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:rgba(226, 232, 240, 0.85);
+  }
+
+  .info-section p{
+    margin:0;
+    font-size:1rem;
+    line-height:1.6;
+    color:rgba(226, 232, 240, 0.88);
+  }
+
+  .btn--primary{
+    background:linear-gradient(135deg, #1f9d55, #15803d);
+    color:#fff;
+    border:none;
+    font-weight:600;
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+
+  .btn--primary:hover{
+    transform:translateY(-1px);
+    box-shadow:0 10px 18px -12px rgba(21, 128, 61, .8);
+  }
+
+  .btn--ghost{
+    background:transparent;
+    border-color:rgba(148, 163, 184, 0.6);
+    color:#0f172a;
+    font-weight:600;
+  }
+
+  .btn--ghost:hover{
+    background:rgba(148, 163, 184, 0.1);
+  }
 
   /* Make video responsive, with a clean 16:9 box */
   .media-stack .video {
@@ -135,14 +201,31 @@
                 <source src="{{ url_for('static', filename='videos/drone_intro.mp4') }}" type="video/mp4">
               </video>
             </div>
+            <!-- BOTTOM: Team Info -->
+            <article class="info-card">
+              <h2>About the Team</h2>
+              <div class="info-section">
+                <h3>How We Operate</h3>
+                <p>Team members will be selected based on merit and performance. A Soldier selected as a primary for the US Army Drone team
+                  will be provided a Memorandum of Understanding (MOU) establishing him or her on the team with acknowledgment from his or her 
+                  chain of command. The US Army Drone Team is not currently a centralized unit (TDA assignment). All Soldiers accepted on the team 
+                  will remain with their unit. All Training and competition will be funded as Temporary Duty (TDY) by the 1st Aviation Brigade at
+                  Ft Rucker, AL. </p>
+                  
+                  <p>Expect training and competitions to occur quarterly at a minimum. We will reevaluate a Soldier's position as a primary on the team 
+                  if the Soldier consistently is unable to attend training and/or competitions quarterly. Training and competition will be both within 
+                  the Continental United States (CONUS) and Outside the Continental United States (OCONUS). Soldiers on the team will be expected to
+                  acquire an Official Passport. </p>
 
-            <!-- Flyer (centered) -->
-            <img
-              src="{{ url_for('static', filename='img/newsletter.jpg') }}"
-              alt="U.S. Army Drone Team Newsletter"
-              class="team-flyer__img"
-              loading="lazy"
-              decoding="async">
+                  <p>Only Army Service Members are permitted to apply and join the US Army Drone Team. If you have questions on expectations while on the 
+                  US Army Drone Team please reach out to usarmydroneteam@army.mil.
+                </p>
+              </div>
+              <div class="info-section">
+                <h3>Future Goals</h3>
+                <p>Within the next year we hope to establish the US Army Drone Team as an Army Sports team similar to the Army Rugby Team.</p>
+              </div>
+            </article>
           </div>
         </section>
       </div>
@@ -150,6 +233,27 @@
       
         <!-- RIGHT: Team Structure & Roster -->
         <div class="col-right">
+          <section class="card">
+            <h2 style="margin-top:0">Newsletters</h2>
+            <p class="meta" style="margin:.5rem 0 1rem 0">Stay up to date with the latest US Army Drone Team articles and announcements.</p>
+            <div class="actions" style="margin-top:1rem">
+              <a
+                class="btn btn--primary"
+                href="{{ url_for('static', filename='docs/us_army_drone_team_newsletter.pdf') }}"
+                download
+              >
+                Download latest newsletter (PDF)
+              </a>
+              <a
+                class="btn btn--ghost"
+                href="{{ url_for('static', filename='docs/us_army_drone_team_newsletter.pdf') }}"
+                target="_blank"
+                rel="noopener"
+              >
+                Open in new tab
+              </a>
+            </div>
+          </section>
           <section class="card sticky">
             <h2 style="margin-top:0">Team Structure & Roster</h2>
             <div class="org">
