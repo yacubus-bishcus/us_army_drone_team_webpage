@@ -191,9 +191,7 @@ def _build_signal_cli_cmd(
     since_timestamp: Optional[int] = None,
     receive_limit: Optional[int] = None,
 ) -> Sequence[str]:
-    cmd = [binary, "--output=json", "--username", phone_number, "receive", "--ignore-attachments"]
-    if since_timestamp:
-        cmd.extend(["--since", str(since_timestamp)])
+    cmd = [binary, "--output=json", "--username", phone_number, "receive"]
     if receive_limit:
         cmd.extend(["--max-messages", str(receive_limit)])
     return cmd
@@ -253,6 +251,7 @@ def _fetch_signal_messages(
 
     messages = _parse_signal_cli_output(proc.stdout, group_id, sender)
     logging.info("Fetched %d candidate messages", len(messages))
+    logging.info(f"Messages: {messages}")
     return messages
 
 def _iter_urls(text: str) -> Iterable[str]:
