@@ -121,3 +121,40 @@ The resulting group ID (a long base64-like string) is what you pass in the
 The ingestion script reuses the existing metadata scraper in
 `drone_team.services.news` so the UAS News cards continue to display the
 OpenGraph titles, summaries, and thumbnails when available.
+
+### Dockerised Signal service runners
+
+If you prefer to keep the Signal ingestion scripts in dedicated containers,
+use the provided `docker-compose.signal.yml` file. It builds a lightweight
+image (defined in `docker/Dockerfile.signal_service`) that ships the Flask
+application code and executes `python -m scripts.signal_service` inside the
+container.
+
+1. Copy `.env.example` to `.env` (or create `.env` manually) and define:
+
+   ```ini
+   SIGNAL_PHONE_NUMBER=+15555555555
+   SIGNAL_CLI_BIN=/usr/local/bin/signal-cli  # Optional override inside the container
+   SIGNAL_CLI_DATA=./.signal-cli             # Directory containing the linked signal-cli profile
+   ```
+
+   The default `SIGNAL_CLI_DATA` value mounts a local `./.signal-cli` folder
+   into the container at `/root/.local/share/signal-cli`. Place the linked
+   profile there (or update the variable to point to an existing directory).
+
+2. Ensure the Signal profile directory contains the registration files for the
+   same phone number you configured in `SIGNAL_PHONE_NUMBER`.
+
+3. Start the three worker containers—one per Signal group—with:
+
+   ```bash
+   docker compose -f docker-compose.signal.yml up --build -d
+   ```
+
+   Each service tails its respective Signal group and writes message logs to
+   `static/logs/news_log.log` (mounted from the host), then ingests any URLs it
+   discovers into the CSV-backed news feed.
+
+4. Inspect `static/logs/news_log.log` or the container logs to verify URL
+   ingestion. Stop the workers with `docker compose -f docker-compose.signal.yml down`
+   when needed.

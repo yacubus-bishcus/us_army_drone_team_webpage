@@ -16,18 +16,53 @@ from sqlalchemy import inspect
 @login_required 
 def uas_news():
     # Example cards; replace with your real feed later
-    news_items = []
+    signal_groups = {
+        "Master-Trainer/UAS/C-UAS": "Master-Trainer / UAS / C-UAS",
+        "IrregularChat: Counter UxV": "IrregularChat · Counter UxV",
+        "IrregularChat: sUAS": "IrregularChat · sUAS",
+    }
+
+    sections = {key: [] for key in signal_groups}
+    other_items = []
+
     csv_articles = news_svc.list_articles(current_app)  # newest first
-    # Transform CSV rows to the same shape expected by template
-    for a in csv_articles:
-        news_items.append({
-            "id": a["id"],
+
+    def _transform(article):
+        return {
+            "id": article["id"],
             "source": "csv",
-            "title": a["title"],
-            "summary": a["summary"],
-            "image": a["image_url"] or url_for("static", filename="img/news_fallback.jpg"),
-            "link": a["url"],
+            "title": article["title"],
+            "summary": article["summary"],
+            "image": article["image_url"] or url_for("static", filename="img/news_fallback.jpg"),
+            "link": article["url"],
+            "group": article.get("added_by", ""),
+        }
+
+    for article in csv_articles:
+        item = _transform(article)
+        key = (article.get("added_by") or "").strip()
+        if key in sections:
+            sections[key].append(item)
+        else:
+            other_items.append(item)
+
+    news_sections = [
+        {
+            "key": key,
+            "title": title,
+            "items": sections[key],
+        }
+        for key, title in signal_groups.items()
+    ]
+
+    if other_items:
+        news_sections.append({
+            "key": "other",
+            "title": "Other News Sources",
+            "items": other_items,
         })
+
+    has_articles = any(section["items"] for section in news_sections)
     # WHITE PAPERS 
     insp = inspect(db.engine)
     if insp.has_table("white_papers"):
@@ -37,7 +72,13 @@ def uas_news():
     else:
         years, tags = [], []
 
-    return render_template("uas_news.html", news_items=news_items, years=years, tags=tags)
+    return render_template(
+        "uas_news.html",
+        news_sections=news_sections,
+        has_articles=has_articles,
+        years=years,
+        tags=tags,
+    )
 
 # admin-only endpoint to add by URL
 @news_bp.route("/admin/articles/url", methods=["POST"])
