@@ -6,9 +6,13 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Optional, Sequence
+
+# Ensure auxiliary scripts don't trigger the local dev browser launcher.
+os.environ.setdefault("RUN_LOCAL", "0")
 from . import pull_signal_news
 from . import signal_group_reader
 
