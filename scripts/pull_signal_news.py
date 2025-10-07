@@ -17,8 +17,10 @@ Environment variables:
 
 The script keeps track of the last processed message timestamp inside the
 Flask ``DATA_DIR`` (``instance/data`` by default) to ensure idempotent runs.
-The script can be ran independent of flask using the --dry-run and --state-file flags 
+The script can be ran independent of flask using the --dry-run and --state-file flags
 Ex: python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.json
+
+Pass ``--log-file=/path/to/log`` to duplicate console output to a persistent log.
 """
 from __future__ import annotations
 
@@ -143,16 +145,13 @@ def _build_signal_cli_cmd(
     phone_number: str,
     *,
     since_timestamp: Optional[int] = None,
-    receive_limit: Optional[int]=None,
-    log_file: Optional[str]=None,
+    receive_limit: Optional[int] = None,
 ) -> Sequence[str]:
     cmd = [binary, "--output=json", "--username", phone_number, "receive", "--ignore-attachments"]
     if since_timestamp:
         cmd.extend(["--since", str(since_timestamp)])
     if receive_limit:
         cmd.extend(["--max-messages", str(receive_limit)])
-    if log_file:
-        cmd.extend(["--log-file", str(log_file)])
     return cmd
 
 
@@ -163,9 +162,15 @@ def _fetch_signal_messages(
     group_id: Optional[str],
     since_timestamp: Optional[int],
     receive_limit: Optional[int],
-    log_file: Optional[str],
 ) -> List[SignalMessage]:
-    cmd = list(_build_signal_cli_cmd(binary, phone_number, since_timestamp=since_timestamp, receive_limit=receive_limit, log_file=log_file))
+    cmd = list(
+        _build_signal_cli_cmd(
+            binary,
+            phone_number,
+            since_timestamp=since_timestamp,
+            receive_limit=receive_limit,
+        )
+    )
     if group_id and _signal_cli_supports_group_flag(binary):
         # `receive --group <id>` restricts output to a single group.
         cmd.extend(["--group", group_id])
@@ -224,7 +229,6 @@ def ingest_signal_urls(
     dry_run: bool = False,
     state_file_override: Optional[str] = None,
     signal_cli_override: Optional[str]=None,
-    log_file: Optional[str]=None,
 ) -> int:
     binary = signal_cli_override or os.environ.get("SIGNAL_CLI_BIN", "signal-cli")
     phone = os.environ.get("SIGNAL_PHONE_NUMBER")
@@ -232,7 +236,6 @@ def ingest_signal_urls(
     receive_limit_env = os.environ.get("SIGNAL_RECEIVE_LIMIT")
     receive_limit = int(receive_limit_env) if receive_limit_env else None
     added_by = os.environ.get("SIGNAL_ADDED_BY", DEFAULT_ADDED_BY)
-    log_file = log_file 
 
     if not phone:
         logging.error("SIGNAL_PHONE_NUMBER environment variable is required")
@@ -261,7 +264,6 @@ def ingest_signal_urls(
                 group_id=group_id,
                 since_timestamp=last_ts,
                 receive_limit=receive_limit,
-                log_file=log_file,
             )
 
             if not messages:
@@ -318,7 +320,6 @@ def ingest_signal_urls(
         group_id=group_id,
         since_timestamp=last_ts,
         receive_limit=receive_limit,
-        log_file=log_file,
     )
 
     if not messages:
@@ -359,17 +360,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     )
     parser.add_argument(
-        "--log_file",
-        help=("Optional create log file"),
+        "--log-file",
+        dest="log_file",
+        help="Optional path to write script logs",
     )
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging_kwargs = {"level": logging.INFO, "format": "%(asctime)s %(levelname)s %(message)s"}
+    if args.log_file:
+        log_path = Path(args.log_file).expanduser()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        logging_kwargs["handlers"] = [
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_path, encoding="utf-8"),
+        ]
+
+    logging.basicConfig(**logging_kwargs)
     return ingest_signal_urls(
         dry_run=args.dry_run,
         state_file_override=args.state_file,
         signal_cli_override=args.signal_cli,
-        log_file=args.log_file,
     )
 
 
