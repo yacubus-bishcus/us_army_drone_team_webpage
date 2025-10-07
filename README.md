@@ -122,10 +122,15 @@ container.
    docker compose -f docker-compose.signal.yml up --build -d
    ```
 
+   > **Note:** Some environments still ship the legacy `docker-compose`
+   > standalone binary instead of the modern `docker compose` plugin. If you
+   > see an error such as `unknown shorthand flag: 'f' in -f`, rerun the command
+   > replacing `docker compose` with `docker-compose`.
+
    Each service tails its respective Signal group and writes message logs to
    `static/logs/news_log.log` (mounted from the host), then ingests any URLs it
    discovers into the CSV-backed news feed.
 
 4. Inspect `static/logs/news_log.log` or the container logs to verify URL
    ingestion. Stop the workers with `docker compose -f docker-compose.signal.yml down`
-   when needed.
+   (or `docker-compose ... down`) when needed.
