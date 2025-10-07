@@ -14,6 +14,10 @@ Environment variables:
                           (defaults to 200).
     SIGNAL_ADDED_BY       The ``added_by`` value stored in the CSV (default:
                           ``signal_bot``)
+    SIGNAL_SENDER         Optional filter for a specific message sender (for
+                          example a "note to self" conversation). The value
+                          should match the Signal E.164 phone number, e.g.
+                          ``+15555555555``.
 
 The script keeps track of the last processed message timestamp inside the
 Flask ``DATA_DIR`` (``instance/data`` by default) to ensure idempotent runs.
@@ -22,12 +26,15 @@ Ex: python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.
 
 Pass ``--log-file=/path/to/log`` to duplicate console output to a persistent log.
 Pass ``--message-log=/path/to/messages.jsonl`` to dump fetched Signal messages as JSON lines.
+Pass ``--since=<iso-or-millis>`` to override the checkpoint and reprocess older
+history, and ``--sender=<phone>`` to restrict ingestion to a specific
+conversation (for example "Note to Self").
 """
 from __future__ import annotations
 
 import argparse, json, logging, os, re, subprocess, sys
 from dataclasses import dataclass, asdict 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from functools import lru_cache
 from typing import Iterable, List, Optional, Sequence, Set, Tuple
@@ -84,7 +91,34 @@ def _save_state_path(path: Path, timestamp: int) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _parse_signal_cli_output(raw: str, target_group: Optional[str]) -> List[SignalMessage]:
+def _parse_since_argument(value: str) -> int:
+    value = (value or "").strip()
+    if not value:
+        raise argparse.ArgumentTypeError("--since requires a non-empty value")
+
+    if value.isdigit():
+        return int(value)
+
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "--since must be milliseconds since epoch or an ISO 8601 datetime"
+        ) from exc
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    else:
+        parsed = parsed.astimezone(timezone.utc)
+
+    return int(parsed.timestamp() * 1000)
+
+
+def _parse_signal_cli_output(
+    raw: str,
+    target_group: Optional[str],
+    target_sender: Optional[str],
+) -> List[SignalMessage]:
     messages: List[SignalMessage] = []
     for line in raw.splitlines():
         line = line.strip()
@@ -106,6 +140,10 @@ def _parse_signal_cli_output(raw: str, target_group: Optional[str]) -> List[Sign
         if target_group and group_id != target_group:
             continue
 
+        sender = envelope.get("source")
+        if target_sender and sender != target_sender:
+            continue
+
         text = msg.get("message") or ""
         if not text:
             continue
@@ -114,7 +152,7 @@ def _parse_signal_cli_output(raw: str, target_group: Optional[str]) -> List[Sign
             SignalMessage(
                 timestamp=envelope.get("timestamp") or 0,
                 text=text,
-                sender=envelope.get("source"),
+                sender=sender,
                 group_id=group_id,
             )
         )
@@ -146,15 +184,39 @@ def _signal_cli_supports_group_flag(binary: str) -> bool:
     return re.search(pattern, help_text) is not None
 
 
+@lru_cache(maxsize=1)
+def _signal_cli_supports_since_flag(binary: str) -> bool:
+    """Return True if `signal-cli receive` advertises a `--since` flag."""
+    help_cmd = [binary, "receive", "--help"]
+    try:
+        proc = subprocess.run(help_cmd, check=True, capture_output=True, text=True)
+        help_text = (proc.stdout or "") + (proc.stderr or "")
+    except FileNotFoundError:
+        raise
+    except PermissionError:
+        raise
+    except subprocess.CalledProcessError as exc:
+        help_text = (exc.stdout or "") + (exc.stderr or "")
+        logging.debug(
+            "Failed to detect since flag (exit code %s): %s",
+            exc.returncode,
+            help_text,
+        )
+
+    pattern = r"(?m)(^|\s)--since\b"
+    return re.search(pattern, help_text) is not None
+
+
 def _build_signal_cli_cmd(
     binary: str,
     phone_number: str,
     *,
     since_timestamp: Optional[int] = None,
     receive_limit: Optional[int] = None,
+    supports_since: bool = True,
 ) -> Sequence[str]:
     cmd = [binary, "--output=json", "--username", phone_number, "receive", "--ignore-attachments"]
-    if since_timestamp:
+    if since_timestamp and supports_since:
         cmd.extend(["--since", str(since_timestamp)])
     if receive_limit:
         cmd.extend(["--max-messages", str(receive_limit)])
@@ -166,16 +228,26 @@ def _fetch_signal_messages(
     binary: str,
     phone_number: str,
     group_id: Optional[str],
+    sender: Optional[str],
     since_timestamp: Optional[int],
     receive_limit: Optional[int],
     ignore_cli_support_flag: Optional[bool],
 ) -> List[SignalMessage]:
+    supports_since = True
+    if since_timestamp:
+        supports_since = _signal_cli_supports_since_flag(binary)
+        if not supports_since:
+            logging.info(
+                "signal-cli receive on this host does not support --since; fetching full history and filtering client-side",
+            )
+
     cmd = list(
         _build_signal_cli_cmd(
             binary,
             phone_number,
             since_timestamp=since_timestamp,
             receive_limit=receive_limit,
+            supports_since=supports_since,
         )
     )
 
@@ -212,7 +284,15 @@ def _fetch_signal_messages(
         logging.error("signal-cli failed: %s", exc.stderr or exc.stdout)
         raise
 
-    messages = _parse_signal_cli_output(proc.stdout, group_id)
+    messages = _parse_signal_cli_output(proc.stdout, group_id, sender)
+    if since_timestamp and not supports_since:
+        before = len(messages)
+        messages = [msg for msg in messages if msg.timestamp >= since_timestamp]
+        logging.info(
+            "Filtered %d message(s) older than %s client-side due to missing --since support",
+            before - len(messages),
+            since_timestamp,
+        )
     logging.info("Fetched %d candidate messages", len(messages))
     return messages
 
@@ -255,10 +335,13 @@ def ingest_signal_urls(
     signal_cli_override: Optional[str]=None,
     ignore_cli_support_flag: bool=False,
     message_log: Optional[str] = None,
+    since_override: Optional[int] = None,
+    sender_filter: Optional[str] = None,
 ) -> int:
     binary = signal_cli_override or os.environ.get("SIGNAL_CLI_BIN", "signal-cli")
     phone = os.environ.get("SIGNAL_PHONE_NUMBER")
     group_id = os.environ.get("SIGNAL_GROUP_ID")
+    sender = sender_filter or os.environ.get("SIGNAL_SENDER")
     receive_limit_env = os.environ.get("SIGNAL_RECEIVE_LIMIT")
     receive_limit = int(receive_limit_env) if receive_limit_env else None
     added_by = os.environ.get("SIGNAL_ADDED_BY", DEFAULT_ADDED_BY)
@@ -288,11 +371,16 @@ def ingest_signal_urls(
             last_ts = _load_state_path(state_path)
             logging.info("Last processed timestamp: %s", last_ts)
 
+            since_ts = since_override if since_override is not None else last_ts
+            if since_override is not None:
+                logging.info("Using user-supplied --since override: %s", since_override)
+
             messages = _fetch_signal_messages(
                 binary=binary,
                 phone_number=phone,
                 group_id=group_id,
-                since_timestamp=last_ts,
+                sender=sender,
+                since_timestamp=since_ts,
                 receive_limit=receive_limit,
                 ignore_cli_support_flag=ignore_cli_support_flag,
             )
@@ -308,7 +396,7 @@ def ingest_signal_urls(
             logging.info("Found %d existing URLs in feed", len(existing_urls))
 
             added_count = 0
-            newest_ts = last_ts or 0
+            newest_ts = (since_ts or last_ts) or 0
             discovered: List[Tuple[str, int]] = []
 
             for msg in sorted(messages, key=lambda m: m.timestamp):
@@ -340,7 +428,7 @@ def ingest_signal_urls(
             if discovered:
                 _print_urls_summary(discovered)
 
-            if newest_ts and newest_ts != last_ts:
+            if state_path and newest_ts and newest_ts != last_ts:
                 _save_state_path(state_path, newest_ts)
                 logging.info("Persisted newest timestamp %s", newest_ts)
 
@@ -348,11 +436,16 @@ def ingest_signal_urls(
             return 0 if added_count >= 0 else 1
 
     # Dry-run flow (outside app context)
+    since_ts = since_override if since_override is not None else last_ts
+    if since_override is not None:
+        logging.info("Using user-supplied --since override: %s", since_override)
+
     messages = _fetch_signal_messages(
         binary=binary,
         phone_number=phone,
         group_id=group_id,
-        since_timestamp=last_ts,
+        sender=sender,
+        since_timestamp=since_ts,
         receive_limit=receive_limit,
         ignore_cli_support_flag=ignore_cli_support_flag,
     )
@@ -365,7 +458,7 @@ def ingest_signal_urls(
         return 0
 
     discovered: List[Tuple[str, int]] = []
-    newest_ts = last_ts or 0
+    newest_ts = (since_ts or last_ts) or 0
     for msg in sorted(messages, key=lambda m: m.timestamp):
         newest_ts = max(newest_ts, msg.timestamp)
         for url in _iter_urls(msg.text):
@@ -408,6 +501,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Optional path to write fetched Signal messages as JSON lines",
     )
     parser.add_argument(
+        "--since",
+        type=_parse_since_argument,
+        help=(
+            "Optional timestamp override (milliseconds since epoch or ISO 8601)"
+            " to re-process older messages."
+        ),
+    )
+    parser.add_argument(
+        "--sender",
+        dest="sender",
+        help=(
+            "Optional sender phone number filter (E.164). Useful for one-on-one or"
+            " 'Note to Self' conversations."
+        ),
+    )
+    parser.add_argument(
         "--ignore_cli_support_flag",
         action="store_true",
         help=("Optional override for the cli supporting --group or -g flags"),
@@ -430,6 +539,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         signal_cli_override=args.signal_cli,
         ignore_cli_support_flag=args.ignore_cli_support_flag,
         message_log=args.message_log,
+        since_override=args.since,
+        sender_filter=args.sender,
     )
 
 
