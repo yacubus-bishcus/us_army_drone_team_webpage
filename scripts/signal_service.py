@@ -1,4 +1,6 @@
-"""Stream Signal group messages and ingest URLs into the news feed."""
+"""Stream Signal group messages and ingest URLs into the news feed.
+USAGE: python -m scripts.signal_service --number +1XXXXXXXXXX --group-name "GROUP_NAME" --log-file news_log.log --signal-cli /path/to/signal-cli --max-minutes N
+"""
 
 from __future__ import annotations
 
