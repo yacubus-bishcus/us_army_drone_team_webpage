@@ -29,6 +29,9 @@ Pass ``--message-log=/path/to/messages.jsonl`` to dump fetched Signal messages a
 Pass ``--since=<iso-or-millis>`` to override the checkpoint and reprocess older
 history, and ``--sender=<phone>`` to restrict ingestion to a specific
 conversation (for example "Note to Self").
+Use ``--source-log=/path --group-name="<Group Name>"`` to scan an existing
+``signal_group_reader`` log for URLs and ingest them into the CSV without
+calling ``signal-cli``.
 """
 from __future__ import annotations
 
@@ -47,6 +50,7 @@ from drone_team.services import news as news_svc
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 STATE_FILENAME = "signal_ingest_state.json"
 DEFAULT_ADDED_BY = "signal_bot"
+LOG_MESSAGE_RE = re.compile(r"\[(?P<ts>[^\]]+)\]\s*(?P<sender>[^:]+):\s*(?P<text>.+)")
 
 
 @dataclass
@@ -114,6 +118,10 @@ def _parse_since_argument(value: str) -> int:
     return int(parsed.timestamp() * 1000)
 
 
+def _utc_now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
 def _parse_signal_cli_output(
     raw: str,
     target_group: Optional[str],
@@ -157,6 +165,48 @@ def _parse_signal_cli_output(
             )
         )
     return messages
+
+
+def _parse_log_timestamp(value: str) -> Optional[int]:
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    else:
+        parsed = parsed.astimezone(timezone.utc)
+    return int(parsed.timestamp() * 1000)
+
+
+def _iter_log_entries(path: Path) -> Iterable[Tuple[int, str]]:
+    """Yield (timestamp_ms, text) pairs from signal_group_reader log lines."""
+    try:
+        with path.open("r", encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                match = LOG_MESSAGE_RE.search(line)
+                if not match:
+                    continue
+                text = match.group("text").strip()
+                if not text:
+                    continue
+                ts_raw = (match.group("ts") or "").strip()
+                timestamp = _parse_log_timestamp(ts_raw) or _utc_now_ms()
+                yield timestamp, text
+    except OSError as exc:
+        logging.error("Failed to read log file %s: %s", path, exc)
+        raise
+
+
+def _normalize_added_by(value: Optional[str], fallback: Optional[str]) -> str:
+    for candidate in (value or "", fallback or ""):
+        cleaned = candidate.strip()
+        if cleaned:
+            return cleaned
+    return DEFAULT_ADDED_BY
 
 
 @lru_cache(maxsize=1)
@@ -336,6 +386,7 @@ def ingest_signal_urls(
     message_log: Optional[str] = None,
     since_override: Optional[int] = None,
     sender_filter: Optional[str] = None,
+    added_by_override: Optional[str] = None,
 ) -> int:
     binary = signal_cli_override or os.environ.get("SIGNAL_CLI_BIN", "signal-cli")
     phone = os.environ.get("SIGNAL_PHONE_NUMBER")
@@ -343,7 +394,7 @@ def ingest_signal_urls(
     sender = sender_filter or os.environ.get("SIGNAL_SENDER")
     receive_limit_env = os.environ.get("SIGNAL_RECEIVE_LIMIT")
     receive_limit = int(receive_limit_env) if receive_limit_env else None
-    added_by = os.environ.get("SIGNAL_ADDED_BY", DEFAULT_ADDED_BY)
+    added_by = _normalize_added_by(added_by_override, os.environ.get("SIGNAL_ADDED_BY"))
 
     if not phone:
         logging.error("SIGNAL_PHONE_NUMBER environment variable is required")
@@ -472,6 +523,85 @@ def ingest_signal_urls(
     return 0
 
 
+def ingest_urls_from_log_file(
+    log_path: str,
+    *,
+    group_name: str,
+    added_by: str,
+    dry_run: bool = False,
+) -> int:
+    path = Path(log_path).expanduser().resolve()
+    if not path.exists():
+        logging.error("Log file %s does not exist", path)
+        return 1
+
+    logging.info("Scanning log %s for URLs (group: %s)", path, group_name)
+
+    entries = list(_iter_log_entries(path))
+    if not entries:
+        logging.info("No message lines found in %s", path)
+        return 0
+
+    if dry_run:
+        seen_urls: Set[str] = set()
+        discovered: List[Tuple[str, int]] = []
+        for timestamp, text in entries:
+            for url in _iter_urls(text):
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                discovered.append((url, timestamp))
+        if discovered:
+            _print_urls_summary(discovered)
+        else:
+            logging.info("No URLs discovered in log %s", path)
+        return 0
+
+    app = create_app()
+    with app.app_context():
+        existing_urls = _load_existing_urls(current_app)
+        logging.info("Found %d existing URLs in feed", len(existing_urls))
+
+        seen_this_run: Set[str] = set()
+        discovered: List[Tuple[str, int]] = []
+        added_count = 0
+
+        for timestamp, text in entries:
+            urls = list(_iter_urls(text))
+            if not urls:
+                continue
+
+            logging.debug(
+                "Processing log line with %d URL(s) at %s",
+                len(urls),
+                datetime.fromtimestamp(timestamp / 1000.0),
+            )
+
+            for url in urls:
+                if url in seen_this_run or url in existing_urls:
+                    logging.info("Skipping duplicate URL from log: %s", url)
+                    continue
+                try:
+                    news_svc.add_article_by_url(current_app, url, added_by=added_by)
+                except Exception:
+                    logging.exception("Failed to ingest URL %s from log", url)
+                    continue
+
+                seen_this_run.add(url)
+                existing_urls.add(url)
+                added_count += 1
+                discovered.append((url, timestamp))
+
+        if discovered:
+            _print_urls_summary(discovered)
+        else:
+            logging.info("No URLs discovered in log %s", path)
+
+        logging.info("Ingested %d new article(s) from log file", added_count)
+
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest Signal URLs into the UAS news feed")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and print URLs without touching the CSV store")
@@ -520,6 +650,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         action="store_true",
         help=("Optional override for the cli supporting --group or -g flags"),
     )
+    parser.add_argument(
+        "--source-log",
+        dest="source_log",
+        help="Path to a signal_group_reader log file to ingest instead of calling signal-cli.",
+    )
+    parser.add_argument(
+        "--group-name",
+        dest="group_name",
+        help="Signal group name (used for tagging ingested URLs when reading from a log).",
+    )
+    parser.add_argument(
+        "--added-by",
+        dest="added_by",
+        help="Override the added_by value stored in the CSV (defaults to the group name for log ingestion).",
+    )
     args = parser.parse_args(argv)
 
     logging_kwargs = {"level": logging.INFO, "format": "%(asctime)s %(levelname)s %(message)s"}
@@ -532,6 +677,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ]
 
     logging.basicConfig(**logging_kwargs)
+
+    if args.source_log:
+        if not args.group_name:
+            parser.error("--group-name is required when using --source-log")
+        added_by_value = _normalize_added_by(args.added_by, args.group_name)
+        return ingest_urls_from_log_file(
+            args.source_log,
+            group_name=args.group_name,
+            added_by=added_by_value,
+            dry_run=args.dry_run,
+        )
+
     return ingest_signal_urls(
         dry_run=args.dry_run,
         state_file_override=args.state_file,
@@ -540,6 +697,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         message_log=args.message_log,
         since_override=args.since,
         sender_filter=args.sender,
+        added_by_override=args.added_by,
     )
 
 
