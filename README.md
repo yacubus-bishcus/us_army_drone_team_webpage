@@ -44,6 +44,7 @@ timestamp. On older `signal-cli` releases (for example 0.13.20) the
 utility does not expose a native `--since` flag; in that case the script
 downloads the available history and performs the timestamp filtering
 locally before ingesting anything:
+timestamp:
 
 ```bash
 SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news \
