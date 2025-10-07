@@ -36,21 +36,6 @@ The script stores its checkpoint in `instance/data/signal_ingest_state.json`
 so repeated runs only process new messages. URLs that already exist in the
 CSV-backed news feed are skipped automatically.
 
-Use the optional `SIGNAL_SENDER` variable (or the equivalent
-`--sender=+15555555555` CLI flag) to focus on a specific contact or your own
-"Note to Self" conversation. For ad-hoc reprocessing of older history you can
-pass `--since` with either an ISO 8601 datetime or a millisecond epoch
-timestamp. On older `signal-cli` releases (for example 0.13.20) the
-utility does not expose a native `--since` flag; in that case the script
-downloads the available history and performs the timestamp filtering
-locally before ingesting anything:
-timestamp:
-
-```bash
-SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news \
-  --since="2024-01-01T00:00:00Z" --sender="+15555555555"
-```
-
 To test the Signal connection without writing to the CSV, append `--dry-run`.
 You can optionally point the checkpoint at a custom location with
 `--state-file=/tmp/signal-state.json` when running in this mode:
@@ -58,18 +43,6 @@ You can optionally point the checkpoint at a custom location with
 ```bash
 SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.json
 ```
-
-### Understanding the Signal tooling
-
-The Signal applications you may already use—**Signal for iOS/Android** (the
-mobile app) and **Signal Desktop** (the graphical desktop client)—do not ship
-with `signal-cli`. They all talk to the same Signal service, but `signal-cli`
-is a separate, headless command-line utility that exposes automation-friendly
-APIs. You must install and link `signal-cli` to the same phone number that is a
-member of the target group chat before the ingestion script can read messages.
-
-Once `signal-cli` is registered with your Signal account it can co-exist with
-the regular mobile and desktop apps; you do not need a new phone number.
 
 ### Installing `signal-cli`
 **Linux (Debian/Ubuntu)** – there is no official `apt` package for
@@ -106,8 +79,6 @@ for the ingestion script:
 ```bash
 signal-cli --username +15555555555 listGroups
 ```
-The resulting group ID (a long base64-like string) is what you pass in the
-`SIGNAL_GROUP_ID` environment variable.
 
 ### Render Cron setup
 
