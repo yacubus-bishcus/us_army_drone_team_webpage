@@ -42,9 +42,9 @@
     {% for section in news_sections %}
       <div class="news-section" id="section-{{ section.key|replace(' ', '-')|replace('/', '-')|replace(':', '-') }}">
         <h2>{{ section.title }}</h2>
-        {% if section.items %}
+        {% if section["items"] %}
           <div class="cards">
-          {% for n in section.items %}
+          {% for n in section["items"] %}
             <article class="card">
               <img src="{{ n.image }}" alt="{{ n.title }}">
               <div class="body">
