@@ -119,7 +119,7 @@ container.
 3. Start the three worker containers—one per Signal group—with:
 
    ```bash
-   docker compose -f docker-compose.signal.yml up --build -d
+   docker-compose -f docker-compose.signal.yml up --build -d
    ```
 
    > **Note:** Some environments still ship the legacy `docker-compose`
