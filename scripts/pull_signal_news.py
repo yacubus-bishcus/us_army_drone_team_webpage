@@ -21,11 +21,12 @@ The script can be ran independent of flask using the --dry-run and --state-file 
 Ex: python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.json
 
 Pass ``--log-file=/path/to/log`` to duplicate console output to a persistent log.
+Pass ``--message-log=/path/to/messages.jsonl`` to dump fetched Signal messages as JSON lines.
 """
 from __future__ import annotations
 
 import argparse, json, logging, os, re, subprocess, sys
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict 
 from datetime import datetime
 from pathlib import Path
 from functools import lru_cache
@@ -237,13 +238,23 @@ def _print_urls_summary(urls_added: Sequence[Tuple[str, int]]) -> None:
         ts = datetime.fromtimestamp(timestamp / 1000.0)
         logging.info("%s — %s", ts.isoformat(), url)
 
+def _write_message_log(messages: Sequence[SignalMessage], path: Path) -> None:
+    path = path.expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", encoding="utf-8") as fh:
+        for msg in messages:
+            fh.write(json.dumps(asdict(msg), ensure_ascii=False) + "\n")
+
+    logging.info("Wrote %d fetched message(s) to %s", len(messages), path)
 
 def ingest_signal_urls(
     *,
     dry_run: bool = False,
     state_file_override: Optional[str] = None,
     signal_cli_override: Optional[str]=None,
-    ignore_cli_support_flag: bool =False,
+    ignore_cli_support_flag: bool=False,
+    message_log: Optional[str] = None,
 ) -> int:
     binary = signal_cli_override or os.environ.get("SIGNAL_CLI_BIN", "signal-cli")
     phone = os.environ.get("SIGNAL_PHONE_NUMBER")
@@ -258,6 +269,10 @@ def ingest_signal_urls(
 
     state_path: Optional[Path] = None
     last_ts: Optional[int] = None
+
+    message_log_path: Optional[Path] = None
+    if message_log:
+        message_log_path = Path(message_log)
 
     if dry_run:
         if state_file_override:
@@ -281,6 +296,9 @@ def ingest_signal_urls(
                 receive_limit=receive_limit,
                 ignore_cli_support_flag=ignore_cli_support_flag,
             )
+
+            if message_log_path:
+                _write_message_log(messages, message_log_path)
 
             if not messages:
                 logging.info("No new messages to process")
@@ -339,6 +357,9 @@ def ingest_signal_urls(
         ignore_cli_support_flag=ignore_cli_support_flag,
     )
 
+    if message_log_path:
+        _write_message_log(messages, message_log_path)
+
     if not messages:
         logging.info("No new messages to process")
         return 0
@@ -382,6 +403,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Optional path to write script logs",
     )
     parser.add_argument(
+        "--message-log",
+        dest="message_log",
+        help="Optional path to write fetched Signal messages as JSON lines",
+    )
+    parser.add_argument(
         "--ignore_cli_support_flag",
         action="store_true",
         help=("Optional override for the cli supporting --group or -g flags"),
@@ -402,7 +428,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dry_run=args.dry_run,
         state_file_override=args.state_file,
         signal_cli_override=args.signal_cli,
-        ignore_cli_support_flag=args.ignore_cli_support_flag 
+        ignore_cli_support_flag=args.ignore_cli_support_flag,
+        message_log=args.message_log,
     )
 
 

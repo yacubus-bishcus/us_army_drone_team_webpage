@@ -81,10 +81,6 @@ the regular mobile and desktop apps; you do not need a new phone number.
   ln -sf "$HOME/.local/lib/signal-cli/bin/signal-cli" "$HOME/.local/bin/signal-cli"
   ```
 
-  If you use the user-level install, ensure `~/.local/bin` is on your `PATH`
-  (most modern shells add it automatically; if not, append
-  `export PATH="$HOME/.local/bin:$PATH"` to your shell profile).
-
   Keeping the binary in a dedicated directory makes upgrades easy—just download
   the latest tarball and repeat the extraction step.
 
