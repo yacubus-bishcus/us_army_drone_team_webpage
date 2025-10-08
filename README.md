@@ -80,19 +80,6 @@ for the ingestion script:
 signal-cli --username +15555555555 listGroups
 ```
 
-### Render Cron setup
-
-1. Deploy `signal-cli` in a background worker (e.g. Docker) and authenticate it
-   with the Signal account that has access to the target group.
-2. Add the environment variables described above to the worker service.
-3. Configure a Render Cron job to execute `python -m scripts.pull_signal_news`
-   on a schedule that suits your cadence (for example every 15 minutes).
-4. Monitor the worker logs to confirm the ingestion count after each run.
-
-The ingestion script reuses the existing metadata scraper in
-`drone_team.services.news` so the UAS News cards continue to display the
-OpenGraph titles, summaries, and thumbnails when available.
-
 ### Dockerised Signal service runners
 
 If you prefer to keep the Signal ingestion scripts in dedicated containers,
@@ -106,7 +93,6 @@ container.
    ```ini
    SIGNAL_PHONE_NUMBER=+15555555555
    SIGNAL_CLI_BIN=/usr/local/bin/signal-cli  # Optional override inside the container
-   SIGNAL_CLI_DATA=./.signal-cli             # Directory containing the linked signal-cli profile
    ```
 
    The default `SIGNAL_CLI_DATA` value mounts a local `./.signal-cli` folder
@@ -126,10 +112,18 @@ container.
 2. Ensure the Signal profile directory contains the registration files for the
    same phone number you configured in `SIGNAL_PHONE_NUMBER`.
 
-3. Start the three worker containers—one per Signal group—with:
+3. Ensure docker is running, give your user permission to talk to the daemon, and test.
+   > Ensure Docker is running with `sudo systemctl status docker`
+   > If it says inactive failed or dead run: `sudo systemctl start docker`
+   > Enable auto-start on boot `sudo systemctl enable docker`
+   > Give your user permission to talk to the daemon `sudo usermod -aG docker $USER`
+   > Refresh session `newgrp docker`
+   > Test with `docker run hello-world`
+   
+4. Start the three worker containers—one per Signal group—with:
 
    ```bash
-   docker-compose -f docker-compose.signal.yml up --build -d
+   docker compose -f docker-compose.signal.yml up --build -d
    ```
 
    > **Note:** Some environments still ship the legacy `docker-compose`
@@ -137,10 +131,20 @@ container.
    > see an error such as `unknown shorthand flag: 'f' in -f`, rerun the command
    > replacing `docker compose` with `docker-compose`.
 
-   Each service tails its respective Signal group and writes message logs to
-   `static/logs/news_log.log` (mounted from the host), then ingests any URLs it
-   discovers into the CSV-backed news feed.
-
-4. Inspect `static/logs/news_log.log` or the container logs to verify URL
-   ingestion. Stop the workers with `docker compose -f docker-compose.signal.yml down`
+5. Inspect the container logs to verify URL ingestion. Stop the workers with 
+   `docker compose -f docker-compose.signal.yml down`
    (or `docker-compose ... down`) when needed.
+
+
+### Render Cron setup
+
+1. Deploy `signal-cli` in a background worker (e.g. Docker) and authenticate it
+   with the Signal account that has access to the target group.
+2. Add the environment variables described above to the worker service.
+3. Configure a Render Cron job to execute `python -m scripts.pull_signal_news`
+   on a schedule that suits your cadence (for example every 15 minutes).
+4. Monitor the worker logs to confirm the ingestion count after each run.
+
+The ingestion script reuses the existing metadata scraper in
+`drone_team.services.news` so the UAS News cards continue to display the
+OpenGraph titles, summaries, and thumbnails when available.

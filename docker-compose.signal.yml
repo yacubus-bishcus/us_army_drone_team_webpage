@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   signal_master_trainer:
     build:
