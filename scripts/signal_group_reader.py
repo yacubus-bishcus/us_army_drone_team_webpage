@@ -13,6 +13,7 @@ Notes:
 """
 
 import argparse, json, logging, signal, subprocess, sys, time
+from shutil import which
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -78,6 +79,22 @@ def normalize(envelope: dict) -> dict:
         "is_outgoing": bool(sm),
     }
 
+def resolve_signal_cli(signal_cli: str) -> str:
+    """Return an absolute path to the signal-cli binary or exit."""
+    candidate = Path(signal_cli).expanduser()
+    if candidate.is_file():
+        return str(candidate)
+
+    discovered = which(signal_cli)
+    if discovered:
+        return discovered
+
+    raise SystemExit(
+        "signal-cli binary not found. "
+        "Set SIGNAL_CLI_BIN to the correct path or install signal-cli in PATH."
+    )
+
+
 def run(number: str, group_name: str, signal_cli: str,
         log_file: Optional[str], max_minutes: Optional[float]):
 
@@ -89,12 +106,14 @@ def run(number: str, group_name: str, signal_cli: str,
     for s in (signal.SIGINT, signal.SIGTERM):
         signal.signal(s, on_signal)
 
-    gid = get_group_id(number, group_name, signal_cli)
+    signal_cli_path = resolve_signal_cli(signal_cli)
+
+    gid = get_group_id(number, group_name, signal_cli_path)
     logging.info("Filtering for group '%s' (ID %s)", group_name, gid)
 
     # Start jsonRpc
     p = subprocess.Popen(
-        [signal_cli, "-u", number, "jsonRpc"],
+        [signal_cli_path, "-u", number, "jsonRpc"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
     )
 
