@@ -18,6 +18,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_NAME = REPO_ROOT.name
+
 stop = False
 
 def on_signal(sig, frame):
@@ -85,13 +88,28 @@ def resolve_signal_cli(signal_cli: str) -> str:
     if candidate.is_file():
         return str(candidate)
 
+    if candidate.is_absolute() and REPO_NAME in candidate.parts:
+        # Users often configure a host path (e.g. /home/me/<repo>/bin/signal-cli)
+        # while the container sees the project under /app. Try to translate the
+        # tail of that path so the same repo asset can be located inside Docker.
+        tail = Path(*candidate.parts[candidate.parts.index(REPO_NAME) + 1 :])
+        translated = REPO_ROOT / tail
+        if translated.is_file():
+            logging.info(
+                "Resolved signal-cli binary inside container as %s (from %s)",
+                translated,
+                candidate,
+            )
+            return str(translated)
+
     discovered = which(signal_cli)
     if discovered:
         return discovered
 
     raise SystemExit(
         "signal-cli binary not found. "
-        "Set SIGNAL_CLI_BIN to the correct path or install signal-cli in PATH."
+        "Set SIGNAL_CLI_BIN to a path that exists inside the container (e.g. /app/bin/signal-cli) "
+        "or install signal-cli in PATH."
     )
 
 
