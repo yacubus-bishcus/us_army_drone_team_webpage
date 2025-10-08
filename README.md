@@ -47,11 +47,11 @@ SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news --dry-run 
 ### Installing `signal-cli`
 **Linux (Debian/Ubuntu)** – there is no official `apt` package for
   `signal-cli`. Download the latest release tarball and install it manually.
-   `export VERSION=<latest version, format "x.y.z">`
-`wget https://github.com/AsamK/signal-cli/releases/download/v"${VERSION}"/signal-cli-"${VERSION}".tar.gz`
-`sudo tar xf signal-cli-"${VERSION}".tar.gz -C /opt`
-`sudo ln -sf /opt/signal-cli-"${VERSION}"/bin/signal-cli /usr/local/bin/`
-
+  
+`docker compose -f docker-compose.signal.yml run --rm --no-deps   --entrypoint signal-cli signal_master_trainer link --name "CLI2"`
+In another terminal:
+`URI='PASTE_THE_EXACT_sgnl://linkdevice_LINE_HERE'`
+`printf '%s' "$URI" | qrencode -t ansiutf8`
 You can list all available groups to discover the group identifier needed
 for the ingestion script:
 
