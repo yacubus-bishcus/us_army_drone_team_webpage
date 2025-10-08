@@ -87,7 +87,22 @@ def resolve_signal_cli(signal_cli: str) -> str:
     candidate = Path(signal_cli).expanduser()
     if candidate.is_file():
         return str(candidate)
-
+    
+    # Common install locations inside our Docker image.
+    docker_paths = (
+        Path("/usr/local/bin/signal-cli"),
+        Path("/opt/signal-cli/bin/signal-cli"),
+        Path("~/Python_Files/us_army_drone_team_webpage/bin/signal-cli"),
+    )
+    for docker_path in docker_paths:
+        if docker_path.is_file():
+            logging.info(
+                "Resolved signal-cli binary inside container as %s (from %s)",
+                docker_path,
+                candidate,
+            )
+            return str(docker_path)
+            
     if candidate.is_absolute() and REPO_NAME in candidate.parts:
         # Users often configure a host path (e.g. /home/me/<repo>/bin/signal-cli)
         # while the container sees the project under /app. Try to translate the
