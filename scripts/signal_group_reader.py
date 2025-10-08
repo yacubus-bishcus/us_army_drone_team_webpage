@@ -121,6 +121,21 @@ def resolve_signal_cli(signal_cli: str) -> str:
     if discovered:
         return discovered
 
+    # If the provided value includes directory components (e.g. "./bin/signal-cli"),
+    # fall back to searching PATH for just the basename.  This lets callers provide
+    # host-relative paths in .env files while still successfully locating the
+    # binary inside Docker where it lives on PATH (e.g. /usr/local/bin/signal-cli).
+    basename = Path(signal_cli).name
+    if basename != signal_cli:
+        discovered = which(basename)
+        if discovered:
+            logging.info(
+                "Resolved signal-cli binary on PATH as %s (from %s)",
+                discovered,
+                signal_cli,
+            )
+            return discovered
+
     raise SystemExit(
         "signal-cli binary not found. "
         "Set SIGNAL_CLI_BIN to a path that exists inside the container (e.g. /app/bin/signal-cli) "
