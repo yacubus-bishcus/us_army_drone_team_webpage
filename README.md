@@ -114,8 +114,8 @@ container.
    profile there (or update the variable to point to an existing directory).
 
    The Signal worker image now downloads the headless `signal-cli` release at
-   build time (default version `0.12.0`). Override the version with
-   `--build-arg SIGNAL_CLI_VERSION=0.12.5` when invoking `docker compose build`
+   build time (default version `0.13.20`). Override the version with
+   `--build-arg SIGNAL_CLI_VERSION=0.13.25` when invoking `docker compose build`
    if you need a newer release.
 
    > The bundled binary lives only inside the container image, so it will not
