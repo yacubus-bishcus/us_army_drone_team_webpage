@@ -113,6 +113,16 @@ container.
    into the container at `/root/.local/share/signal-cli`. Place the linked
    profile there (or update the variable to point to an existing directory).
 
+   The Signal worker image now downloads the headless `signal-cli` release at
+   build time (default version `0.12.0`). Override the version with
+   `--build-arg SIGNAL_CLI_VERSION=0.12.5` when invoking `docker compose build`
+   if you need a newer release.
+
+   > The bundled binary lives only inside the container image, so it will not
+   > conflict with any `signal-cli` you have already installed on your host.
+   > You can keep the local installation (useful for registering or linking the
+   > account) or remove it; the containerised workers run with their own copy.
+
 2. Ensure the Signal profile directory contains the registration files for the
    same phone number you configured in `SIGNAL_PHONE_NUMBER`.
 
