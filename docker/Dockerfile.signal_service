@@ -1,9 +1,27 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+ARG SIGNAL_CLI_VERSION=0.12.0
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    SIGNAL_CLI_VERSION=${SIGNAL_CLI_VERSION}
+
+RUN apt-get update \ 
+    && apt-get install --yes --no-install-recommends \
+        ca-certificates \
+        curl \
+        libpcsclite1 \
+        openjdk-17-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL "https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux-native.tar.gz" \ 
+    -o /tmp/signal-cli.tar.gz \ 
+    && mkdir -p /opt/signal-cli \ 
+    && tar -xzf /tmp/signal-cli.tar.gz -C /opt/signal-cli --strip-components=1 \ 
+    && ln -sf /opt/signal-cli/bin/signal-cli /usr/local/bin/signal-cli \ 
+    && rm /tmp/signal-cli.tar.gz
+
+WORKDIR /app
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
