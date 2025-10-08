@@ -11,7 +11,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         libpcsclite1 \
-        openjdk-17-jre-headless \
+        openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux-native.tar.gz" \ 
