@@ -13,9 +13,13 @@ Notes:
 """
 
 import argparse, json, logging, signal, subprocess, sys, time
+from shutil import which
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_NAME = REPO_ROOT.name
 
 stop = False
 
@@ -78,6 +82,37 @@ def normalize(envelope: dict) -> dict:
         "is_outgoing": bool(sm),
     }
 
+def resolve_signal_cli(signal_cli: str) -> str:
+    """Return an absolute path to the signal-cli binary or exit."""
+    candidate = Path(signal_cli).expanduser()
+    if candidate.is_file():
+        return str(candidate)
+
+    if candidate.is_absolute() and REPO_NAME in candidate.parts:
+        # Users often configure a host path (e.g. /home/me/<repo>/bin/signal-cli)
+        # while the container sees the project under /app. Try to translate the
+        # tail of that path so the same repo asset can be located inside Docker.
+        tail = Path(*candidate.parts[candidate.parts.index(REPO_NAME) + 1 :])
+        translated = REPO_ROOT / tail
+        if translated.is_file():
+            logging.info(
+                "Resolved signal-cli binary inside container as %s (from %s)",
+                translated,
+                candidate,
+            )
+            return str(translated)
+
+    discovered = which(signal_cli)
+    if discovered:
+        return discovered
+
+    raise SystemExit(
+        "signal-cli binary not found. "
+        "Set SIGNAL_CLI_BIN to a path that exists inside the container (e.g. /app/bin/signal-cli) "
+        "or install signal-cli in PATH."
+    )
+
+
 def run(number: str, group_name: str, signal_cli: str,
         log_file: Optional[str], max_minutes: Optional[float]):
 
@@ -89,12 +124,14 @@ def run(number: str, group_name: str, signal_cli: str,
     for s in (signal.SIGINT, signal.SIGTERM):
         signal.signal(s, on_signal)
 
-    gid = get_group_id(number, group_name, signal_cli)
+    signal_cli_path = resolve_signal_cli(signal_cli)
+
+    gid = get_group_id(number, group_name, signal_cli_path)
     logging.info("Filtering for group '%s' (ID %s)", group_name, gid)
 
     # Start jsonRpc
     p = subprocess.Popen(
-        [signal_cli, "-u", number, "jsonRpc"],
+        [signal_cli_path, "-u", number, "jsonRpc"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
     )
 
