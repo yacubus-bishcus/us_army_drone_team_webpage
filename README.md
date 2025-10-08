@@ -47,31 +47,10 @@ SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news --dry-run 
 ### Installing `signal-cli`
 **Linux (Debian/Ubuntu)** – there is no official `apt` package for
   `signal-cli`. Download the latest release tarball and install it manually.
-  Choose the option that matches your permissions:
-
-  *System-wide install (requires sudo)*
-
-  ```bash
-  VERSION="0.12.0"  # Replace with the current version from the releases page
-  curl -LO https://github.com/AsamK/signal-cli/releases/download/v${VERSION}/signal-cli-${VERSION}-Linux-native.tar.gz
-  sudo mkdir -p /opt/signal-cli
-  sudo tar -xzf signal-cli-${VERSION}-Linux-native.tar.gz -C /opt/signal-cli --strip-components=1
-  sudo ln -sf /opt/signal-cli/bin/signal-cli /usr/local/bin/signal-cli
-  ```
-
-  *User install (no sudo required)*
-
-  ```bash
-  VERSION="0.12.0"  # Replace with the current version from the releases page
-  curl -LO https://github.com/AsamK/signal-cli/releases/download/v${VERSION}/signal-cli-${VERSION}-Linux-native.tar.gz
-  mkdir -p "$HOME/.local/lib/signal-cli"
-  tar -xzf signal-cli-${VERSION}-Linux-native.tar.gz -C "$HOME/.local/lib/signal-cli" --strip-components=1
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$HOME/.local/lib/signal-cli/bin/signal-cli" "$HOME/.local/bin/signal-cli"
-  ```
-
-  Keeping the binary in a dedicated directory makes upgrades easy—just download
-  the latest tarball and repeat the extraction step.
+   `export VERSION=<latest version, format "x.y.z">`
+`wget https://github.com/AsamK/signal-cli/releases/download/v"${VERSION}"/signal-cli-"${VERSION}".tar.gz`
+`sudo tar xf signal-cli-"${VERSION}".tar.gz -C /opt`
+`sudo ln -sf /opt/signal-cli-"${VERSION}"/bin/signal-cli /usr/local/bin/`
 
 You can list all available groups to discover the group identifier needed
 for the ingestion script:

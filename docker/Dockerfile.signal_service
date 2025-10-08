@@ -1,25 +1,26 @@
 FROM python:3.11-slim
 
-ARG SIGNAL_CLI_VERSION=0.13.20
-
+ARG VERSION=0.13.20
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    SIGNAL_CLI_VERSION=${SIGNAL_CLI_VERSION}
+    PYTHONUNBUFFERED=1
 
-RUN apt-get update \ 
-    && apt-get install --yes --no-install-recommends \
-        ca-certificates \
-        curl \
-        libpcsclite1 \
-        openjdk-21-jre-headless \
-    && rm -rf /var/lib/apt/lists/*
+# Install OS deps (curl + Java for signal-cli)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      curl \
+      libpcsclite1 \
+      openjdk-21-jre-headless \
+ && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL "https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux-native.tar.gz" \ 
-    -o /tmp/signal-cli.tar.gz \ 
-    && mkdir -p /opt/signal-cli \ 
-    && tar -xzf /tmp/signal-cli.tar.gz -C /opt/signal-cli --strip-components=1 \ 
-    && ln -sf /opt/signal-cli/bin/signal-cli /usr/local/bin/signal-cli \ 
-    && rm /tmp/signal-cli.tar.gz
+# Download and install signal-cli (Java distribution)
+# This tarball extracts as signal-cli-${VERSION}/ (bin/, lib/, etc.)
+RUN set -eux; \
+    curl -fsSL -o /tmp/signal-cli.tar.gz \
+      "https://github.com/AsamK/signal-cli/releases/download/v"${VERSION}"/signal-cli-"${VERSION}".tar.gz"; \
+    tar -xzf /tmp/signal-cli.tar.gz -C /opt; \
+    ln -sf "/opt/signal-cli-${VERSION}/bin/signal-cli" /usr/local/bin/signal-cli; \
+    rm -f /tmp/signal-cli.tar.gz
 
 WORKDIR /app
 
@@ -29,5 +30,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 RUN chmod +x docker/signal_service_entrypoint.sh
+ENTRYPOINT ["/app/docker/signal_service_entrypoint.sh"]
 
 ENTRYPOINT ["/app/docker/signal_service_entrypoint.sh"]
