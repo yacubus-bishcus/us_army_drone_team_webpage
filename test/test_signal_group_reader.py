@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import io
 
 import pytest
 
@@ -45,3 +46,44 @@ def test_normalize_uses_extracted_group_id():
     assert info["text"] == "Hello"
     assert info["sender"] == "Alice"
     assert info["is_outgoing"] is False
+
+
+def test_run_raises_when_signal_cli_exits_early(monkeypatch):
+    class FakeProcess:
+        def __init__(self, returncode: int = 0):
+            self._returncode = returncode
+            self.stdout = io.StringIO("")
+
+        def poll(self):
+            return self._returncode
+
+        def terminate(self):
+            self._returncode = self._returncode or -15
+
+        def wait(self, timeout=None):
+            return self._returncode
+
+        def kill(self):
+            self._returncode = self._returncode or -9
+
+    fake_process = FakeProcess()
+
+    monkeypatch.setattr(sgr, "resolve_signal_cli", lambda value: value)
+    monkeypatch.setattr(sgr, "get_group_id", lambda *args, **kwargs: "group")
+    monkeypatch.setattr(
+        sgr.subprocess,
+        "Popen",
+        lambda *args, **kwargs: fake_process,
+    )
+
+    with pytest.raises(RuntimeError) as excinfo:
+        sgr.run(
+            number="+15555550100",
+            group_name="Test",
+            signal_cli="signal-cli",
+            log_file=None,
+            max_minutes=2,
+            on_message=None,
+        )
+
+    assert "exited unexpectedly" in str(excinfo.value)
