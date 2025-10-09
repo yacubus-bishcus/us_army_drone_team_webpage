@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from flask import Flask
-
-
 _DEFAULT_INTERVAL_SECONDS = 60 * 60 * 4  # 4 hours
 _DEFAULT_TARGET_COUNT = 10
+
+_scheduler_lock = threading.Lock()
+_scheduler_started = False
 
 
 @dataclass(frozen=True)
@@ -194,43 +195,55 @@ def init_signal_scheduler(app: Flask) -> None:
         app.logger.info("Signal scheduler skipped in testing mode")
         return
 
+    if _strtobool(os.getenv("DISABLE_SIGNAL_SCHEDULER")):
+        app.logger.info("Signal scheduler disabled via DISABLE_SIGNAL_SCHEDULER")
+        return
+
     if not _strtobool(os.getenv("ENABLE_SIGNAL_SCHEDULER")):
         app.logger.info("Signal scheduler disabled; set ENABLE_SIGNAL_SCHEDULER=1 to enable")
         return
 
-    groups = _load_group_configs(app)
-    if not groups:
-        app.logger.warning("Signal scheduler enabled but no groups configured")
-        return
+    with _scheduler_lock:
+        global _scheduler_started
+        if _scheduler_started:
+            app.logger.info("Signal scheduler already running; skipping initialization")
+            return
 
-    try:
-        interval = int(os.getenv("SIGNAL_SCHEDULER_INTERVAL_SECONDS", str(_DEFAULT_INTERVAL_SECONDS)))
-        if interval <= 0:
-            raise ValueError
-    except ValueError:
-        app.logger.warning(
-            "Invalid SIGNAL_SCHEDULER_INTERVAL_SECONDS value; using default %d seconds",
-            _DEFAULT_INTERVAL_SECONDS,
+        groups = _load_group_configs(app)
+        if not groups:
+            app.logger.warning("Signal scheduler enabled but no groups configured")
+            return
+
+        try:
+            interval = int(os.getenv("SIGNAL_SCHEDULER_INTERVAL_SECONDS", str(_DEFAULT_INTERVAL_SECONDS)))
+            if interval <= 0:
+                raise ValueError
+        except ValueError:
+            app.logger.warning(
+                "Invalid SIGNAL_SCHEDULER_INTERVAL_SECONDS value; using default %d seconds",
+                _DEFAULT_INTERVAL_SECONDS,
+            )
+            interval = _DEFAULT_INTERVAL_SECONDS
+
+        max_minutes_env = os.getenv("SIGNAL_MAX_MINUTES")
+        try:
+            max_minutes = float(max_minutes_env) if max_minutes_env else None
+        except (TypeError, ValueError):
+            app.logger.warning("Invalid SIGNAL_MAX_MINUTES value '%s'; ignoring", max_minutes_env)
+            max_minutes = None
+
+        dry_run = _strtobool(os.getenv("SIGNAL_DRY_RUN"))
+
+        thread = threading.Thread(
+            target=_worker,
+            args=(app, groups, interval),
+            kwargs={"dry_run": dry_run, "max_minutes": max_minutes},
+            name="signal-scheduler",
+            daemon=True,
         )
-        interval = _DEFAULT_INTERVAL_SECONDS
+        thread.start()
 
-    max_minutes_env = os.getenv("SIGNAL_MAX_MINUTES")
-    try:
-        max_minutes = float(max_minutes_env) if max_minutes_env else None
-    except (TypeError, ValueError):
-        app.logger.warning("Invalid SIGNAL_MAX_MINUTES value '%s'; ignoring", max_minutes_env)
-        max_minutes = None
-
-    dry_run = _strtobool(os.getenv("SIGNAL_DRY_RUN"))
-
-    thread = threading.Thread(
-        target=_worker,
-        args=(app, groups, interval),
-        kwargs={"dry_run": dry_run, "max_minutes": max_minutes},
-        name="signal-scheduler",
-        daemon=True,
-    )
-    thread.start()
+        _scheduler_started = True
 
 
 __all__ = ["init_signal_scheduler"]
