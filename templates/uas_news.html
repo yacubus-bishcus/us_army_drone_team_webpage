@@ -15,6 +15,10 @@
   .admin-add .row{display:flex;gap:.5rem;align-items:center}
   .admin-add input{flex:1;padding:10px;border:1px solid #bbb;border-radius:8px}
   .admin-add button{padding:10px 14px;border:1px solid #999;background:#eee;border-radius:8px;cursor:pointer}
+  .admin-update{margin:0 0 1rem 0;border:1px solid #bbb;padding:.75rem;border-radius:10px;background:#fff}
+  .admin-update form{display:flex;flex-direction:column;gap:.35rem}
+  .admin-update button{align-self:flex-start;padding:10px 14px;border:1px solid #666;background:#e6f4ff;border-radius:8px;cursor:pointer;font-weight:600}
+  .admin-update .hint{font-size:.85rem;color:#555}
   @media (max-width:980px){.page{grid-template-columns:1fr}.sidebar{position:static}}
 </style>
 
@@ -24,6 +28,12 @@
 
     {# Admin quick-add by URL #}
     {% if current_user.is_authenticated and current_user.role == 'admin' %}
+      <div class="admin-update">
+        <form action="{{ url_for('news.run_signal_update') }}" method="post">
+          <button type="submit">Run Signal Update</button>
+          <div class="hint">Fetch the latest Signal links and refresh the feed.</div>
+        </form>
+      </div>
       <div class="admin-add">
         <form action="{{ url_for('news.add_article_url') }}" method="post">
           <div class="row">

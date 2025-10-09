@@ -130,7 +130,7 @@ def _run_group(
     signal_cli: str,
     dry_run: bool,
     max_minutes: Optional[float],
-) -> None:
+) -> int:
     """Run a single Signal ingestion session for ``group``."""
     # Import lazily to avoid circular imports during Flask app creation.
     from scripts import signal_service
@@ -153,11 +153,13 @@ def _run_group(
                 group.name,
                 exit_code,
             )
+        return exit_code
     except Exception:  # pragma: no cover - defensive logging
         app.logger.exception(
             "Signal scheduler: unexpected failure while processing group '%s'",
             group.name,
         )
+        return 1
 
 
 def _run_iteration(
@@ -194,6 +196,57 @@ def _run_iteration(
 
     for thread in threads:
         thread.join()
+
+
+def run_ingestion_once(app: Flask) -> list[tuple[GroupConfig, int]]:
+    """Run Signal ingestion immediately for the configured group(s).
+
+    Returns a list of ``(GroupConfig, exit_code)`` tuples. When no groups are
+    configured an empty list is returned. A ``RuntimeError`` is raised if the
+    environment lacks required settings.
+    """
+
+    groups = _load_group_configs(app)
+    if not groups:
+        return []
+
+    phone = os.getenv("SIGNAL_PHONE_NUMBER")
+    if not phone:
+        raise RuntimeError(
+            "SIGNAL_PHONE_NUMBER is not configured; unable to run Signal update.",
+        )
+
+    signal_cli = os.getenv("SIGNAL_CLI_BIN", "signal-cli")
+    dry_run = _strtobool(os.getenv("SIGNAL_DRY_RUN"))
+
+    max_minutes_env = os.getenv("SIGNAL_MAX_MINUTES")
+    max_minutes: Optional[float] = None
+    if max_minutes_env:
+        try:
+            parsed = float(max_minutes_env)
+            if parsed <= 0:
+                raise ValueError
+            max_minutes = parsed
+        except (TypeError, ValueError):
+            app.logger.warning(
+                "Invalid SIGNAL_MAX_MINUTES value '%s'; ignoring",
+                max_minutes_env,
+            )
+            max_minutes = None
+
+    results: list[tuple[GroupConfig, int]] = []
+    for group in groups:
+        exit_code = _run_group(
+            app,
+            group,
+            phone=phone,
+            signal_cli=signal_cli,
+            dry_run=dry_run,
+            max_minutes=max_minutes,
+        )
+        results.append((group, exit_code))
+
+    return results
 
 
 def _worker(
@@ -290,4 +343,4 @@ def init_signal_scheduler(app: Flask) -> None:
         _scheduler_started = True
 
 
-__all__ = ["init_signal_scheduler"]
+__all__ = ["init_signal_scheduler", "run_ingestion_once"]
