@@ -177,14 +177,18 @@ def run(
             return stop_requested
 
         logging.info("Starting signal_group_reader for group '%s'", group_name)
-        signal_group_reader.run(
-            number=number,
-            group_name=group_name,
-            signal_cli=signal_cli,
-            log_file=str(log_path),
-            max_minutes=runtime_limit,
-            on_message=handle_message,
-        )
+        try:
+            signal_group_reader.run(
+                number=number,
+                group_name=group_name,
+                signal_cli=signal_cli,
+                log_file=str(log_path),
+                max_minutes=runtime_limit,
+                on_message=handle_message,
+            )
+        except RuntimeError as exc:
+            logging.error("signal_group_reader failed: %s", exc)
+            return 1
 
         if discovered:
             pull_signal_news._print_urls_summary(discovered)

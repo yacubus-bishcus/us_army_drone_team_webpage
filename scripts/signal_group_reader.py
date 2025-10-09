@@ -218,6 +218,11 @@ def run(
     )
 
     deadline = (time.monotonic() + max_minutes * 60.0) if max_minutes else None
+    start_time = time.monotonic()
+    timed_out = False
+    callback_stop_requested = False
+    stream_exhausted = False
+    proc_returncode: Optional[int] = None
     try:
         assert p.stdout is not None
         for raw in p.stdout:
@@ -225,6 +230,7 @@ def run(
                 break
             if deadline and time.monotonic() >= deadline:
                 logger.info("Time limit (%.2f minutes) reached; shutting down.", max_minutes)
+                timed_out = True
                 break
 
             line = raw.strip()
@@ -253,14 +259,35 @@ def run(
             if on_message and on_message(info):
                 logger.info("Callback requested shutdown; stopping reader.")
                 stop = True
+                callback_stop_requested = True
                 break
+        else:
+            stream_exhausted = True
     finally:
-        if p.poll() is None:
+        proc_returncode = p.poll()
+        if proc_returncode is None:
             try:
                 p.terminate()
                 p.wait(timeout=5)
             except Exception:
                 p.kill()
+
+    if (
+        stream_exhausted
+        and not stop
+        and not timed_out
+        and not callback_stop_requested
+    ):
+        # signal-cli exited before we requested it to stop. Surface this as an error so
+        # callers don't silently succeed after only a few seconds of runtime.
+        runtime = time.monotonic() - start_time
+        code = proc_returncode
+        reason = (
+            "signal-cli jsonRpc exited unexpectedly after %.1f seconds" % runtime
+        )
+        if code is not None:
+            reason += f" (exit code {code})"
+        raise RuntimeError(reason + ". Check that the Signal service account is linked and healthy.")
 
 def main():
     ap = argparse.ArgumentParser(description="Stream Signal messages from a specific group via signal-cli jsonRpc (systemd-friendly).")
