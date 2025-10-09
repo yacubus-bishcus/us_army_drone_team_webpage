@@ -14,6 +14,7 @@ fi
 LOG_FILE=${SIGNAL_LOG_FILE:-/app/static/logs/news_log.log}
 SIGNAL_CLI_BIN=${SIGNAL_CLI_BIN:-signal-cli}
 MAX_MINUTES=${SIGNAL_MAX_MINUTES:-}
+TARGET_COUNT=${SIGNAL_TARGET_COUNT:-10}
 ADDED_BY=${SIGNAL_ADDED_BY:-}
 
 mkdir -p "$(dirname "${LOG_FILE}")"
@@ -22,6 +23,10 @@ ARGS=("--number" "${SIGNAL_PHONE_NUMBER}" "--group-name" "${SIGNAL_GROUP_NAME}" 
 
 if [[ -n "${MAX_MINUTES}" ]]; then
   ARGS+=("--max-minutes" "${MAX_MINUTES}")
+fi
+
+if [[ -n "${TARGET_COUNT}" ]]; then
+  ARGS+=("--target-count" "${TARGET_COUNT}")
 fi
 
 if [[ -n "${ADDED_BY}" ]]; then
