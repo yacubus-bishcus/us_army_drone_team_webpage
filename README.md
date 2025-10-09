@@ -73,6 +73,8 @@ container.
    SIGNAL_PHONE_NUMBER=+15555555555
    SIGNAL_CLI_BIN=/usr/local/bin/signal-cli  # Optional override inside the container
    SIGNAL_TARGET_COUNT=10                    # Stop after ingesting 10 new URLs
+   # Optional: override the runtime limit (default 2 min in SANDBOX, 180 min otherwise)
+   # SIGNAL_MAX_MINUTES=15
    ```
 
    The default `SIGNAL_CLI_DATA` value mounts a local `./.signal-cli` folder
@@ -116,9 +118,11 @@ container.
    (or `docker-compose ... down`) when needed.
 
    Each worker stops automatically after discovering `SIGNAL_TARGET_COUNT`
-   new URLs (default `10`). Increase or decrease the threshold by adjusting
-   the environment variable before launching the stack if you prefer longer-
-   or shorter-lived ingestion runs.
+   new URLs (default `10`) or once it has been running for the mode-specific
+   runtime limit (2 minutes with `SANDBOX_DATA_MODE=true`, 180 minutes
+   otherwise). Increase or decrease the URL threshold or provide
+   `SIGNAL_MAX_MINUTES` to override the runtime cap before launching the
+   stack.
 
 6. Verify signal workers 
    > List the containers that started `docker compose -f docker-compose.signal.yml ps`

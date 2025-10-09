@@ -8,7 +8,6 @@ services:
       SIGNAL_GROUP_NAME: "Master-Trainer/UAS/C-UAS"
       SIGNAL_LOG_FILE: /app/static/logs/news_log_master_trainer.log
       SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
-      SIGNAL_MAX_MINUTES: 2
       SIGNAL_TARGET_COUNT: 10
       SIGNAL_ADDED_BY: "Master-Trainer/UAS/C-UAS"
     volumes:
@@ -25,7 +24,6 @@ services:
       SIGNAL_GROUP_NAME: "IrregularChat: Counter UxV"
       SIGNAL_LOG_FILE: /app/static/logs/news_log_counter_uxv.log
       SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
-      SIGNAL_MAX_MINUTES: 2
       SIGNAL_TARGET_COUNT: 10
       SIGNAL_ADDED_BY: "IrregularChat: Counter UxV"
     volumes:
@@ -42,7 +40,6 @@ services:
       SIGNAL_GROUP_NAME: "IrregularChat: sUAS"
       SIGNAL_LOG_FILE: /app/static/logs/news_log_suas.log
       SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
-      SIGNAL_MAX_MINUTES: 2
       SIGNAL_TARGET_COUNT: 10
       SIGNAL_ADDED_BY: "IrregularChat: sUAS"
     volumes:

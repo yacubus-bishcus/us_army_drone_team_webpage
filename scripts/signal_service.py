@@ -1,5 +1,8 @@
 """Stream Signal group messages and ingest URLs into the news feed.
 USAGE: python -m scripts.signal_service --number +1XXXXXXXXXX --group-name "GROUP_NAME" --log-file news_log.log --signal-cli /path/to/signal-cli --max-minutes N --target-count 10
+
+If ``--max-minutes`` is not provided the service defaults to a two minute
+runtime when ``SANDBOX_DATA_MODE=true`` and three hours otherwise.
 """
 
 from __future__ import annotations
@@ -17,6 +20,11 @@ from flask import current_app
 os.environ.setdefault("RUN_LOCAL", "0")
 from . import pull_signal_news
 from . import signal_group_reader
+from drone_team import create_app
+
+
+_SANDBOX_RUNTIME_MINUTES = 2
+_PRODUCTION_RUNTIME_MINUTES = 60 * 3
 from drone_team import create_app
 
 
@@ -57,6 +65,20 @@ def run(
 
     app = create_app()
     with app.app_context():
+        sandbox_enabled = bool(current_app.config.get("SANDBOX_DATA_MODE"))
+        default_limit = (
+            _SANDBOX_RUNTIME_MINUTES if sandbox_enabled else _PRODUCTION_RUNTIME_MINUTES
+        )
+        runtime_limit = max_minutes if max_minutes is not None else default_limit
+
+        if max_minutes is None:
+            mode_label = "SANDBOX" if sandbox_enabled else "production"
+            logging.info(
+                "No max runtime provided; defaulting to %.0f minutes for %s mode",
+                runtime_limit,
+                mode_label,
+            )
+
         state_path = pull_signal_news._resolve_state_path(current_app, None)
         last_ts = pull_signal_news._load_state_path(state_path)
         logging.info("Last processed timestamp: %s", last_ts)
@@ -152,7 +174,7 @@ def run(
             group_name=group_name,
             signal_cli=signal_cli,
             log_file=str(log_path),
-            max_minutes=max_minutes,
+            max_minutes=runtime_limit,
             on_message=handle_message,
         )
 
@@ -197,7 +219,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--max-minutes",
         type=float,
-        help="Optional maximum runtime (in minutes) for signal_group_reader",
+        help=(
+            "Optional maximum runtime (in minutes) for signal_group_reader. "
+            "Defaults to 2 minutes in SANDBOX_DATA_MODE and 180 minutes otherwise."
+        ),
     )
     parser.add_argument(
         "--dry-run",
