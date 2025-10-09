@@ -13,6 +13,26 @@ Set `SANDBOX_DATA_MODE=true` in your environment while debugging or running auto
 Postgres database and Google Sheets remain untouched. When this flag is enabled the application uses a local SQLite
 database (override the path with `SANDBOX_SQLITE_URL`) and all Google Sheets synchronisation is skipped.
 
+## Migrating UAS news articles to Postgres
+
+If you see the log entry `news_articles table missing; returning empty list`, the Postgres schema has not been upgraded
+yet. Run the Alembic migrations first:
+
+```bash
+flask --app drone_team.app db upgrade
+```
+
+The historical CSV data stored at `data/data/news_articles.csv` can be imported into the database with the helper
+script below. The command loads `.env` automatically, so ensure `DATABASE_URL` (and any other required variables) are set
+before executing it.
+
+```bash
+python -m scripts.import_news_articles_csv data/data/news_articles.csv
+```
+
+Add `--dry-run` to validate the CSV without writing anything to the database. Existing rows are updated in-place, so the
+script can be re-run after editing a CSV entry.
+
 ## Scheduled Signal ingestion for UAS News
 
 The `scripts/pull_signal_news.py` helper can be executed on a schedule (for example
