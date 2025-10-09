@@ -234,6 +234,29 @@
         <!-- RIGHT: Team Structure & Roster -->
         <div class="col-right">
           <section class="card">
+            <h2 style="margin-top:0">Velocidrone Secure Access</h2>
+            <p class="meta" style="margin:.5rem 0 1rem 0;">
+              Request a one-time login command without exposing the competition passcode.
+            </p>
+            <form id="velocidrone-request-form" data-session-url="{{ velocidrone_login_url or '' }}">
+              <div style="display:flex;flex-direction:column;gap:.5rem;">
+                <label for="velocidrone-callsign">Velocidrone Callsign</label>
+                <input
+                  type="text"
+                  id="velocidrone-callsign"
+                  name="callsign"
+                  placeholder="Enter your official callsign"
+                  autocomplete="off"
+                  required
+                >
+              </div>
+              <div class="actions" style="margin-top:1rem;">
+                <button class="btn" type="submit">Request Secure Login</button>
+              </div>
+            </form>
+            <p class="meta" id="velocidrone-status" role="status" aria-live="polite" style="margin-top:1rem;"></p>
+          </section>
+          <section class="card">
             <h2 style="margin-top:0">Newsletters</h2>
             <p class="meta" style="margin:.5rem 0 1rem 0">Stay up to date with the latest US Army Drone Team articles and announcements.</p>
             <div class="actions" style="margin-top:1rem">

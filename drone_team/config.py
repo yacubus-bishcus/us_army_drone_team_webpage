@@ -82,6 +82,11 @@ class Config:
     # Content Restrictions 
     MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25 MB upload cap
 
+    # Velocidrone Integration
+    VELOCIDRONE_LOGIN_URL = os.getenv("VELOCIDRONE_LOGIN_URL", "").strip()
+    VELOCIDRONE_PASSCODE = os.getenv("VELOCIDRONE_PASSCODE")
+    VELOCIDRONE_SESSION_TTL = int(os.getenv("VELOCIDRONE_SESSION_TTL", "120"))
+    
 # ========== Secret Validation ==========
 def validate_required_env():
     """Call this AFTER load_dotenv() and app.config.from_object(Config)."""
