@@ -136,19 +136,6 @@ container.
    `docker compose -f docker-compose.signal.yml run --rm signal_master_trainer`
 
 
-### Render Cron setup
-
-1. Deploy `signal-cli` in a background worker (e.g. Docker) and authenticate it
-   with the Signal account that has access to the target group.
-2. Add the environment variables described above to the worker service.
-3. Configure a Render Cron job to execute `python -m scripts.pull_signal_news`
-   on a schedule that suits your cadence (for example every 15 minutes).
-4. Monitor the worker logs to confirm the ingestion count after each run.
-
-The ingestion script reuses the existing metadata scraper in
-`drone_team.services.news` so the UAS News cards continue to display the
-OpenGraph titles, summaries, and thumbnails when available.
-
 ### Built-in lightweight scheduler
 
 If you want the existing Render web service to handle Signal ingestion without
