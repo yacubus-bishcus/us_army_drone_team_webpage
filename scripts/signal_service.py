@@ -18,6 +18,8 @@ from flask import current_app
 
 # Ensure auxiliary scripts don't trigger the local dev browser launcher.
 os.environ.setdefault("RUN_LOCAL", "0")
+# Avoid recursively spawning scheduler threads when create_app() is invoked here.
+os.environ.setdefault("DISABLE_SIGNAL_SCHEDULER", "1")
 from . import pull_signal_news
 from . import signal_group_reader
 from drone_team import create_app
