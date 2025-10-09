@@ -2,6 +2,19 @@
 from .extensions import db
 from datetime import datetime
 
+
+class NewsArticle(db.Model):
+    __tablename__ = "news_articles"
+
+    id = db.Column(db.String(32), primary_key=True)
+    url = db.Column(db.String(1024), nullable=False)
+    title = db.Column(db.String(512), nullable=False)
+    summary = db.Column(db.Text)
+    image_url = db.Column(db.String(1024))
+    added_by = db.Column(db.String(128), nullable=False, index=True)
+    added_at = db.Column(db.DateTime, nullable=False, index=True)
+
+
 class WhitePaper(db.Model):
     __tablename__ = "white_papers"
     id = db.Column(db.Integer, primary_key=True)
