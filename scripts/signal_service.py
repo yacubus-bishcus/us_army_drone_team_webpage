@@ -20,6 +20,7 @@ from flask import current_app
 os.environ.setdefault("RUN_LOCAL", "0")
 from . import pull_signal_news
 from . import signal_group_reader
+from drone_team import create_app
 
 
 _SANDBOX_RUNTIME_MINUTES = 2
