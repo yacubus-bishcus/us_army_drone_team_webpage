@@ -23,9 +23,12 @@ REPO_NAME = REPO_ROOT.name
 
 stop = False
 
+
+logger = logging.getLogger("signal_group_reader")
+
 def on_signal(sig, frame):
     global stop
-    logging.info("Received signal %s, shutting down...", sig)
+    logger.info("Received signal %s, shutting down...", sig)
     stop = True
 
 def human(ts_ms: Optional[int]) -> str:
@@ -34,15 +37,14 @@ def human(ts_ms: Optional[int]) -> str:
     return datetime.fromtimestamp(ts_ms/1000).isoformat(sep=" ", timespec="seconds")
 
 def setup_logging(log_file: Optional[str]):
-    root = logging.getLogger()
-    root.handlers[:] = []
-    root.setLevel(logging.INFO)
+    logger.handlers[:] = []
+    logger.setLevel(logging.INFO)
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
 
     # journal captures stdout/stderr → always log to stdout
     sh = logging.StreamHandler(sys.stdout)
     sh.setFormatter(fmt)
-    root.addHandler(sh)
+    logger.addHandler(sh)
 
     # optional file mirror
     if log_file:
@@ -50,7 +52,9 @@ def setup_logging(log_file: Optional[str]):
         p.parent.mkdir(parents=True, exist_ok=True)
         fh = logging.FileHandler(p, encoding="utf-8")
         fh.setFormatter(fmt)
-        root.addHandler(fh)
+        logger.addHandler(fh)
+
+    logger.propagate = False
 
 def get_group_id(number: str, name: str, signal_cli: str) -> str:
     """Resolve group ID by display name (case-insensitive)."""
@@ -96,7 +100,7 @@ def resolve_signal_cli(signal_cli: str) -> str:
     )
     for docker_path in docker_paths:
         if docker_path.is_file():
-            logging.info(
+            logger.info(
                 "Resolved signal-cli binary inside container as %s (from %s)",
                 docker_path,
                 candidate,
@@ -110,7 +114,7 @@ def resolve_signal_cli(signal_cli: str) -> str:
         tail = Path(*candidate.parts[candidate.parts.index(REPO_NAME) + 1 :])
         translated = REPO_ROOT / tail
         if translated.is_file():
-            logging.info(
+            logger.info(
                 "Resolved signal-cli binary inside container as %s (from %s)",
                 translated,
                 candidate,
@@ -129,7 +133,7 @@ def resolve_signal_cli(signal_cli: str) -> str:
     if basename != signal_cli:
         discovered = which(basename)
         if discovered:
-            logging.info(
+            logger.info(
                 "Resolved signal-cli binary on PATH as %s (from %s)",
                 discovered,
                 signal_cli,
@@ -157,7 +161,7 @@ def run(
 
     setup_logging(log_file)
     if max_minutes:
-        logging.info("Time limit set: %.2f minutes", max_minutes)
+        logger.info("Time limit set: %.2f minutes", max_minutes)
 
     # Handle SIGTERM/SIGINT (systemd will send SIGTERM on stop). These
     # handlers can only be registered from the main interpreter thread; the
@@ -167,14 +171,14 @@ def run(
         for s in (signal.SIGINT, signal.SIGTERM):
             signal.signal(s, on_signal)
     else:
-        logging.debug(
+        logger.debug(
             "Skipping signal handler setup because we're running outside the main thread."
         )
 
     signal_cli_path = resolve_signal_cli(signal_cli)
 
     gid = get_group_id(number, group_name, signal_cli_path)
-    logging.info("Filtering for group '%s' (ID %s)", group_name, gid)
+    logger.info("Filtering for group '%s' (ID %s)", group_name, gid)
 
     # Start jsonRpc
     p = subprocess.Popen(
@@ -189,7 +193,7 @@ def run(
             if stop:
                 break
             if deadline and time.monotonic() >= deadline:
-                logging.info("Time limit (%.2f minutes) reached; shutting down.", max_minutes)
+                logger.info("Time limit (%.2f minutes) reached; shutting down.", max_minutes)
                 break
 
             line = raw.strip()
@@ -208,7 +212,7 @@ def run(
             if info["group_id"] != gid:
                 continue
 
-            logging.info(
+            logger.info(
                 "[%s] %s: %s",
                 human(info["timestamp"] or 0),
                 "(me)" if info["is_outgoing"] else info["sender"],
@@ -216,7 +220,7 @@ def run(
             )
 
             if on_message and on_message(info):
-                logging.info("Callback requested shutdown; stopping reader.")
+                logger.info("Callback requested shutdown; stopping reader.")
                 stop = True
                 break
     finally:

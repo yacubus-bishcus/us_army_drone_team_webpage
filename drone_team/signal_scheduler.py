@@ -125,7 +125,51 @@ def _load_group_configs(app: Flask) -> list[GroupConfig]:
     return configs
 
 
-def _run_iteration(app: Flask, groups: Iterable[GroupConfig], *, dry_run: bool, max_minutes: Optional[float]) -> None:
+def _run_group(
+    app: Flask,
+    group: GroupConfig,
+    *,
+    phone: str,
+    signal_cli: str,
+    dry_run: bool,
+    max_minutes: Optional[float],
+) -> None:
+    """Run a single Signal ingestion session for ``group``."""
+    # Import lazily to avoid circular imports during Flask app creation.
+    from scripts import signal_service
+
+    app.logger.info("Signal scheduler: starting ingestion for group '%s'", group.name)
+    try:
+        exit_code = signal_service.run(
+            phone,
+            group.name,
+            signal_cli,
+            log_file=group.log_file,
+            max_minutes=max_minutes,
+            dry_run=dry_run,
+            added_by=group.added_by,
+            target_count=group.target_count,
+        )
+        if exit_code != 0:
+            app.logger.warning(
+                "Signal scheduler: ingestion for '%s' exited with status %s",
+                group.name,
+                exit_code,
+            )
+    except Exception:  # pragma: no cover - defensive logging
+        app.logger.exception(
+            "Signal scheduler: unexpected failure while processing group '%s'",
+            group.name,
+        )
+
+
+def _run_iteration(
+    app: Flask,
+    groups: Iterable[GroupConfig],
+    *,
+    dry_run: bool,
+    max_minutes: Optional[float],
+) -> None:
     phone = os.getenv("SIGNAL_PHONE_NUMBER")
     if not phone:
         app.logger.error("Signal scheduler enabled but SIGNAL_PHONE_NUMBER is not configured")
@@ -133,32 +177,26 @@ def _run_iteration(app: Flask, groups: Iterable[GroupConfig], *, dry_run: bool, 
 
     signal_cli = os.getenv("SIGNAL_CLI_BIN", "signal-cli")
 
-    # Import lazily to avoid circular imports during Flask app creation.
-    from scripts import signal_service
+    threads: list[threading.Thread] = []
 
     for group in groups:
-        app.logger.info("Signal scheduler: starting ingestion for group '%s'", group.name)
-        try:
-            exit_code = signal_service.run(
-                phone,
-                group.name,
-                signal_cli,
-                log_file=group.log_file,
-                max_minutes=max_minutes,
-                dry_run=dry_run,
-                added_by=group.added_by,
-                target_count=group.target_count,
-            )
-            if exit_code != 0:
-                app.logger.warning(
-                    "Signal scheduler: ingestion for '%s' exited with status %s",
-                    group.name,
-                    exit_code,
-                )
-        except Exception:  # pragma: no cover - defensive logging
-            app.logger.exception(
-                "Signal scheduler: unexpected failure while processing group '%s'", group.name
-            )
+        thread = threading.Thread(
+            target=_run_group,
+            name=f"signal-group-{_slugify(group.name)}",
+            args=(app, group),
+            kwargs={
+                "phone": phone,
+                "signal_cli": signal_cli,
+                "dry_run": dry_run,
+                "max_minutes": max_minutes,
+            },
+            daemon=True,
+        )
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()
 
 
 def _worker(
