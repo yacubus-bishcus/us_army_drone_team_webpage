@@ -10,6 +10,7 @@ services:
       SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
       SIGNAL_TARGET_COUNT: 10
       SIGNAL_ADDED_BY: "Master-Trainer/UAS/C-UAS"
+      SANDBOX_DATA_MODE: "true"
     volumes:
       - ./static/logs:/app/static/logs
       - ${SIGNAL_CLI_DATA:-./.signal-cli}:/root/.local/share/signal-cli
@@ -26,6 +27,7 @@ services:
       SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
       SIGNAL_TARGET_COUNT: 10
       SIGNAL_ADDED_BY: "IrregularChat: Counter UxV"
+      SANDBOX_DATA_MODE: "true"
     volumes:
       - ./static/logs:/app/static/logs
       - ${SIGNAL_CLI_DATA:-./.signal-cli}:/root/.local/share/signal-cli
@@ -42,6 +44,7 @@ services:
       SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
       SIGNAL_TARGET_COUNT: 10
       SIGNAL_ADDED_BY: "IrregularChat: sUAS"
+      SANDBOX_DATA_MODE: "true"
     volumes:
       - ./static/logs:/app/static/logs
       - ${SIGNAL_CLI_DATA:-./.signal-cli}:/root/.local/share/signal-cli
