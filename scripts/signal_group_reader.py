@@ -13,10 +13,11 @@ Notes:
 """
 
 import argparse, json, logging, signal, subprocess, sys, time
+from typing import Callable
 from shutil import which
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPO_NAME = REPO_ROOT.name
@@ -143,8 +144,17 @@ def resolve_signal_cli(signal_cli: str) -> str:
     )
 
 
-def run(number: str, group_name: str, signal_cli: str,
-        log_file: Optional[str], max_minutes: Optional[float]):
+def run(
+    number: str,
+    group_name: str,
+    signal_cli: str,
+    log_file: Optional[str],
+    max_minutes: Optional[float],
+    on_message: Optional[Callable[[dict], bool]] = None,
+):
+
+    global stop
+    stop = False
 
     setup_logging(log_file)
     if max_minutes:
@@ -191,10 +201,17 @@ def run(number: str, group_name: str, signal_cli: str,
             if info["group_id"] != gid:
                 continue
 
-            logging.info("[%s] %s: %s",
-                         human(info["timestamp"] or 0),
-                         "(me)" if info["is_outgoing"] else info["sender"],
-                         info["text"])
+            logging.info(
+                "[%s] %s: %s",
+                human(info["timestamp"] or 0),
+                "(me)" if info["is_outgoing"] else info["sender"],
+                info["text"],
+            )
+
+            if on_message and on_message(info):
+                logging.info("Callback requested shutdown; stopping reader.")
+                stop = True
+                break
     finally:
         if p.poll() is None:
             try:
@@ -216,7 +233,13 @@ def main():
     if args.max_minutes is not None and args.max_minutes <= 0:
         ap.error("--max-minutes must be a positive number")
 
-    run(args.number, args.group_name, args.signal_cli, args.log_file, args.max_minutes)
+    run(
+        args.number,
+        args.group_name,
+        args.signal_cli,
+        args.log_file,
+        args.max_minutes,
+    )
 
 if __name__ == "__main__":
     main()
