@@ -135,5 +135,9 @@ def create_app():
     # ★ Only auto-open a browser for local dev (avoid in PaaS/production workers)
     register_cli(app)
 
+    from .signal_scheduler import init_signal_scheduler
+
+    init_signal_scheduler(app)
+
     return app
 
