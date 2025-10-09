@@ -7,10 +7,7 @@ runtime when ``SANDBOX_DATA_MODE=true`` and three hours otherwise.
 
 from __future__ import annotations
 
-import argparse
-import logging
-import os
-import sys
+import argparse, logging, os, sys
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -27,7 +24,6 @@ from drone_team import create_app
 
 _SANDBOX_RUNTIME_MINUTES = 2
 _PRODUCTION_RUNTIME_MINUTES = 60 * 3
-from drone_team import create_app
 
 
 def _resolve_added_by(value: Optional[str], fallback: Optional[str]) -> str:

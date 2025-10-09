@@ -1,10 +1,7 @@
 """Simple background scheduler for ingesting Signal URLs inside the web app."""
 from __future__ import annotations
 
-import json
-import os
-import threading
-import time
+import json, os, threading, time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
