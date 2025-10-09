@@ -5,6 +5,7 @@ from flask import render_template, request, jsonify, current_app, flash, redirec
 from flask_login import login_required, current_user 
 from drone_team.services import news as news_svc 
 from drone_team.authz import admin_required
+from drone_team.signal_scheduler import run_ingestion_once
 from werkzeug.utils import secure_filename
 from drone_team.extensions import db
 from drone_team.models import WhitePaper
@@ -104,6 +105,38 @@ def delete_article(article_id):
         flash("Article deleted.", "success")
     else:
         flash("Article not found.", "error")
+    return redirect(url_for("news.uas_news"))
+
+
+@news_bp.route("/admin/signal/update", methods=["POST"])
+@admin_required
+def run_signal_update():
+    try:
+        results = run_ingestion_once(current_app)
+    except RuntimeError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("news.uas_news"))
+    except Exception as exc:  # pragma: no cover - defensive logging
+        current_app.logger.exception("Signal update failed: %s", exc)
+        flash("Signal update failed. Check the logs for details.", "error")
+        return redirect(url_for("news.uas_news"))
+
+    if not results:
+        flash("No Signal groups are configured for ingestion.", "warning")
+        return redirect(url_for("news.uas_news"))
+
+    failures = [group.name for group, exit_code in results if exit_code != 0]
+    if failures:
+        flash(
+            "Signal update completed with errors for: " + ", ".join(failures),
+            "error",
+        )
+    else:
+        flash("Signal update completed successfully.", "success")
+
+    if os.getenv("SIGNAL_DRY_RUN", "").strip().lower() in {"1", "true", "t", "yes", "y", "on"}:
+        flash("Signal update ran in dry-run mode; no articles were added.", "info")
+
     return redirect(url_for("news.uas_news"))
 
 # JSON search endpoint (called by sidebar JS)
