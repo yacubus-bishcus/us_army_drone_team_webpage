@@ -1,5 +1,8 @@
 """Stream Signal group messages and ingest URLs into the news feed.
-USAGE: python -m scripts.signal_service --number +1XXXXXXXXXX --group-name "GROUP_NAME" --log-file news_log.log --signal-cli /path/to/signal-cli --max-minutes N
+USAGE: python -m scripts.signal_service --number +1XXXXXXXXXX --group-name "GROUP_NAME" --log-file news_log.log --signal-cli /path/to/signal-cli --max-minutes N --target-count 10
+
+If ``--max-minutes`` is not provided the service defaults to a two minute
+runtime when ``SANDBOX_DATA_MODE=true`` and three hours otherwise.
 """
 
 from __future__ import annotations
@@ -11,10 +14,17 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
+from flask import current_app
+
 # Ensure auxiliary scripts don't trigger the local dev browser launcher.
 os.environ.setdefault("RUN_LOCAL", "0")
 from . import pull_signal_news
 from . import signal_group_reader
+
+
+_SANDBOX_RUNTIME_MINUTES = 2
+_PRODUCTION_RUNTIME_MINUTES = 60 * 3
+from drone_team import create_app
 
 
 def _resolve_added_by(value: Optional[str], fallback: Optional[str]) -> str:
@@ -35,6 +45,7 @@ def run(
     max_minutes: Optional[float],
     dry_run: bool,
     added_by: Optional[str],
+    target_count: int,
 ) -> int:
     """Stream Signal messages and ingest discovered URLs."""
 
@@ -46,23 +57,146 @@ def run(
     log_path = Path(log_file).expanduser().resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logging.info("Starting signal_group_reader for group '%s'", group_name)
-    signal_group_reader.run(
-        number=number,
-        group_name=group_name,
-        signal_cli=signal_cli,
-        log_file=str(log_path),
-        max_minutes=max_minutes,
-    )
+    if target_count <= 0:
+        raise ValueError("target_count must be a positive integer")
 
     added_by_value = _resolve_added_by(added_by, group_name)
-    logging.info("Ingesting URLs discovered in %s", log_path)
-    return pull_signal_news.ingest_urls_from_log_file(
-        str(log_path),
-        group_name=group_name,
-        added_by=added_by_value,
-        dry_run=dry_run,
-    )
+
+    app = create_app()
+    with app.app_context():
+        sandbox_enabled = bool(current_app.config.get("SANDBOX_DATA_MODE"))
+        default_limit = (
+            _SANDBOX_RUNTIME_MINUTES if sandbox_enabled else _PRODUCTION_RUNTIME_MINUTES
+        )
+        runtime_limit = max_minutes if max_minutes is not None else default_limit
+
+        if max_minutes is None:
+            mode_label = "SANDBOX" if sandbox_enabled else "production"
+            logging.info(
+                "No max runtime provided; defaulting to %.0f minutes for %s mode",
+                runtime_limit,
+                mode_label,
+            )
+
+        state_path = pull_signal_news._resolve_state_path(current_app, None)
+        last_ts = pull_signal_news._load_state_path(state_path)
+        logging.info("Last processed timestamp: %s", last_ts)
+
+        existing_urls = pull_signal_news._load_existing_urls(current_app)
+        logging.info("Loaded %d existing URL(s) from feed", len(existing_urls))
+
+        seen_this_run: set[str] = set()
+        newest_ts = last_ts or 0
+        discovered: list[tuple[str, int]] = []
+        total_ingested = 0
+
+        def handle_message(payload: dict) -> bool:
+            nonlocal newest_ts, total_ingested
+
+            timestamp = payload.get("timestamp") or 0
+            newest_ts = max(newest_ts, timestamp)
+
+            if last_ts and timestamp <= last_ts:
+                logging.debug(
+                    "Skipping message at %s (<= checkpoint %s)",
+                    timestamp,
+                    last_ts,
+                )
+                return False
+
+            text = payload.get("text") or ""
+            urls = list(pull_signal_news._iter_urls(text))
+            if not urls:
+                return False
+
+            processed_in_message: set[str] = set()
+            stop_requested = False
+            for url in urls:
+                if url in processed_in_message:
+                    continue
+                processed_in_message.add(url)
+
+                if url in seen_this_run:
+                    logging.debug("Already processed URL this run: %s", url)
+                    continue
+
+                if url in existing_urls:
+                    logging.info("Skipping duplicate URL already in feed: %s", url)
+                    continue
+
+                if dry_run:
+                    logging.info(
+                        "[dry-run] Discovered new URL %s (%d/%d)",
+                        url,
+                        total_ingested + 1,
+                        target_count,
+                    )
+                    discovered.append((url, timestamp))
+                    total_ingested += 1
+                    seen_this_run.add(url)
+                else:
+                    try:
+                        pull_signal_news.news_svc.add_article_by_url(
+                            current_app,
+                            url,
+                            added_by=added_by_value,
+                        )
+                    except Exception:
+                        logging.exception("Failed to ingest URL %s", url)
+                        # Allow future attempts if ingestion fails.
+                        continue
+
+                    existing_urls.add(url)
+                    discovered.append((url, timestamp))
+                    total_ingested += 1
+                    seen_this_run.add(url)
+                    logging.info(
+                        "Ingested URL %s (%d/%d)",
+                        url,
+                        total_ingested,
+                        target_count,
+                    )
+
+                if total_ingested >= target_count:
+                    logging.info(
+                        "Target of %d new URL(s) reached; requesting shutdown.",
+                        target_count,
+                    )
+                    stop_requested = True
+                    break
+
+            return stop_requested
+
+        logging.info("Starting signal_group_reader for group '%s'", group_name)
+        signal_group_reader.run(
+            number=number,
+            group_name=group_name,
+            signal_cli=signal_cli,
+            log_file=str(log_path),
+            max_minutes=runtime_limit,
+            on_message=handle_message,
+        )
+
+        if discovered:
+            pull_signal_news._print_urls_summary(discovered)
+
+        if not dry_run and state_path and newest_ts and newest_ts != last_ts:
+            pull_signal_news._save_state_path(state_path, newest_ts)
+            logging.info("Persisted newest timestamp %s", newest_ts)
+
+        if total_ingested >= target_count:
+            logging.info(
+                "Target met with %d new URL(s); shutting down.", total_ingested
+            )
+        else:
+            logging.info(
+                "Processed %d new URL(s); target of %d not reached before exit.",
+                total_ingested,
+                target_count,
+            )
+
+        logging.info("Discovered %d URL(s) this run", len(discovered))
+        return 0
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -84,7 +218,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--max-minutes",
         type=float,
-        help="Optional maximum runtime (in minutes) for signal_group_reader",
+        help=(
+            "Optional maximum runtime (in minutes) for signal_group_reader. "
+            "Defaults to 2 minutes in SANDBOX_DATA_MODE and 180 minutes otherwise."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -95,6 +232,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--added-by",
         dest="added_by",
         help="Override the added_by metadata stored with new URLs",
+    )
+    parser.add_argument(
+        "--target-count",
+        type=int,
+        default=10,
+        help="Number of new URLs to ingest before shutting down (default: 10)",
     )
 
     args = parser.parse_args(argv)
@@ -110,6 +253,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         max_minutes=args.max_minutes,
         dry_run=args.dry_run,
         added_by=args.added_by,
+        target_count=args.target_count,
     )
 
 
