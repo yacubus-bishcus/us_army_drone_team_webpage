@@ -12,8 +12,7 @@ Notes:
 - For systemd auto-stop, prefer RuntimeMaxSec= instead of --max-minutes.
 """
 
-import argparse, json, logging, signal, subprocess, sys, time
-from typing import Callable
+import argparse, json, logging, signal, subprocess, sys, time, threading
 from shutil import which
 from datetime import datetime
 from pathlib import Path
@@ -160,9 +159,17 @@ def run(
     if max_minutes:
         logging.info("Time limit set: %.2f minutes", max_minutes)
 
-    # Handle SIGTERM/SIGINT (systemd will send SIGTERM on stop)
-    for s in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(s, on_signal)
+    # Handle SIGTERM/SIGINT (systemd will send SIGTERM on stop). These
+    # handlers can only be registered from the main interpreter thread; the
+    # scheduler invokes us from a worker thread, so skip registration in that
+    # case instead of crashing with ValueError.
+    if threading.current_thread() is threading.main_thread():
+        for s in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(s, on_signal)
+    else:
+        logging.debug(
+            "Skipping signal handler setup because we're running outside the main thread."
+        )
 
     signal_cli_path = resolve_signal_cli(signal_cli)
 

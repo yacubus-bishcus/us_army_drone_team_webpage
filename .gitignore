@@ -13,7 +13,4 @@ us_army_drone_team_webpage.code-workspace
 /bin/
 signal_log.log
 data/data/news_articles.csv
-static/logs/news_log.log
-static/logs/news_log_master_trainer.log
-static/logs/news_log_counter_uxv.log
-static/logs/news_log_suas.log 
+static/logs/*
