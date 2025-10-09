@@ -260,7 +260,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     args = parser.parse_args(argv)
 
-    logging_kwargs = {"level": logging.INFO, "format": "%(asctime)s %(levelname)s %(message)s"}
+    logging_kwargs = {
+        "level": logging.INFO,
+        "format": "%(asctime)s %(levelname)s %(message)s",
+        "handlers": [logging.StreamHandler(sys.stdout)],
+        "force": True,
+    }
     logging.basicConfig(**logging_kwargs)
 
     return run(

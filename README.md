@@ -124,16 +124,25 @@ container.
    `SIGNAL_MAX_MINUTES` to override the runtime cap before launching the
    stack.
 
-6. Verify signal workers 
+6. Verify signal workers
    > List the containers that started `docker compose -f docker-compose.signal.yml ps`
    > Tail the logs to confirm activity `docker compose -f docker-compose.signal.yml logs -f signal_master_trainer`
    > Bring the stack down when finished `docker compose -f docker-compose.signal.yml down`
 
    **Note:**
-   > Other useful commands: 
+   > Other useful commands:
    > Build by name: `docker compose -f docker-compose.signal.yml up --build signal_master_trainer`
-   > Run once in foreground and remove the container afterward (useful for testing): 
+   > Run once in foreground and remove the container afterward (useful for testing):
    `docker compose -f docker-compose.signal.yml run --rm signal_master_trainer`
+
+7. Run the Signal worker locally (without Docker) with the same environment by invoking:
+
+   ```bash
+   python run.py static/logs/news_log_testing.log
+   ```
+
+   Replace the log file path with the destination you want to mirror. The command streams
+   output to stdout and continuously appends the same content to the specified log file.
 
 
 ### Built-in lightweight scheduler
