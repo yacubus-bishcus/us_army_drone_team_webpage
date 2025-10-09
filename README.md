@@ -155,7 +155,9 @@ provisioning a separate Cron Job, enable the bundled background scheduler. Set
 Signal groups you want to poll.
 
 * Polling cadence – override `SIGNAL_SCHEDULER_INTERVAL_SECONDS` to change the
-  interval (defaults to four hours).
+  interval (defaults to four hours). The scheduler keeps each ingestion session
+  alive for roughly the length of this interval so that it continues listening
+  for new Signal messages between runs.
 * Group configuration – define `SIGNAL_SCHEDULER_GROUPS` as JSON. Each entry may
   be a string (just the Signal group name) or an object with custom settings:
 
@@ -178,6 +180,8 @@ Signal groups you want to poll.
 * Single-group shortcut – if you only have one Signal group, you can skip the
   JSON and set `SIGNAL_GROUP_NAME`, `SIGNAL_LOG_FILE`, and `SIGNAL_ADDED_BY`
   instead.
+* Runtime cap – set `SIGNAL_MAX_MINUTES` when you need a shorter (or longer)
+  runtime than the default interval-length window.
 
 The scheduler reuses the same `scripts.signal_service` worker that the Docker
 composition runs. The Flask app keeps the thread alive across requests, so the
