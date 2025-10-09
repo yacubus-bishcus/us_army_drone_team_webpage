@@ -257,11 +257,24 @@ def init_signal_scheduler(app: Flask) -> None:
             interval = _DEFAULT_INTERVAL_SECONDS
 
         max_minutes_env = os.getenv("SIGNAL_MAX_MINUTES")
-        try:
-            max_minutes = float(max_minutes_env) if max_minutes_env else None
-        except (TypeError, ValueError):
-            app.logger.warning("Invalid SIGNAL_MAX_MINUTES value '%s'; ignoring", max_minutes_env)
-            max_minutes = None
+        max_minutes: Optional[float]
+        if max_minutes_env:
+            try:
+                max_minutes = float(max_minutes_env)
+                if max_minutes <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                app.logger.warning(
+                    "Invalid SIGNAL_MAX_MINUTES value '%s'; ignoring", max_minutes_env
+                )
+                max_minutes = None
+        else:
+            max_minutes = max(interval / 60.0, 1.0)
+            app.logger.info(
+                "Signal scheduler: defaulting run window to %.1f minutes to cover the %d-second interval",
+                max_minutes,
+                interval,
+            )
 
         dry_run = _strtobool(os.getenv("SIGNAL_DRY_RUN"))
 
