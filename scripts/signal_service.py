@@ -89,15 +89,14 @@ def run(
         logging.info("Loaded %d existing URL(s) from feed", len(existing_urls))
 
         seen_this_run: set[str] = set()
-        newest_ts = last_ts or 0
+        checkpoint_ts = last_ts or 0
         discovered: list[tuple[str, int]] = []
         total_ingested = 0
 
         def handle_message(payload: dict) -> bool:
-            nonlocal newest_ts, total_ingested
+            nonlocal checkpoint_ts, total_ingested
 
             timestamp = payload.get("timestamp") or 0
-            newest_ts = max(newest_ts, timestamp)
 
             if last_ts and timestamp <= last_ts:
                 logging.debug(
@@ -110,10 +109,12 @@ def run(
             text = payload.get("text") or ""
             urls = list(pull_signal_news._iter_urls(text))
             if not urls:
+                checkpoint_ts = max(checkpoint_ts, timestamp)
                 return False
 
             processed_in_message: set[str] = set()
             stop_requested = False
+            message_failed = False
             for url in urls:
                 if url in processed_in_message:
                     continue
@@ -147,6 +148,7 @@ def run(
                     except Exception:
                         logging.exception("Failed to ingest URL %s", url)
                         # Allow future attempts if ingestion fails.
+                        message_failed = True
                         continue
 
                     existing_urls.add(url)
@@ -168,6 +170,14 @@ def run(
                     stop_requested = True
                     break
 
+            if dry_run or not message_failed:
+                checkpoint_ts = max(checkpoint_ts, timestamp)
+            else:
+                logging.info(
+                    "Deferring checkpoint update at %s due to ingestion failure(s)",
+                    timestamp,
+                )
+
             return stop_requested
 
         logging.info("Starting signal_group_reader for group '%s'", group_name)
@@ -183,9 +193,14 @@ def run(
         if discovered:
             pull_signal_news._print_urls_summary(discovered)
 
-        if not dry_run and state_path and newest_ts and newest_ts != last_ts:
-            pull_signal_news._save_state_path(state_path, newest_ts)
-            logging.info("Persisted newest timestamp %s", newest_ts)
+        if (
+            not dry_run
+            and state_path
+            and checkpoint_ts
+            and checkpoint_ts != last_ts
+        ):
+            pull_signal_news._save_state_path(state_path, checkpoint_ts)
+            logging.info("Persisted newest timestamp %s", checkpoint_ts)
 
         if total_ingested >= target_count:
             logging.info(
