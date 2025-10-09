@@ -191,10 +191,6 @@ def _worker(
 
 
 def init_signal_scheduler(app: Flask) -> None:
-    if app.config.get("TESTING"):
-        app.logger.info("Signal scheduler skipped in testing mode")
-        return
-
     if _strtobool(os.getenv("DISABLE_SIGNAL_SCHEDULER")):
         app.logger.info("Signal scheduler disabled via DISABLE_SIGNAL_SCHEDULER")
         return
