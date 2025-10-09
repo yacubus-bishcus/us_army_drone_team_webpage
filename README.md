@@ -148,3 +148,39 @@ container.
 The ingestion script reuses the existing metadata scraper in
 `drone_team.services.news` so the UAS News cards continue to display the
 OpenGraph titles, summaries, and thumbnails when available.
+
+### Built-in lightweight scheduler
+
+If you want the existing Render web service to handle Signal ingestion without
+provisioning a separate Cron Job, enable the bundled background scheduler. Set
+`ENABLE_SIGNAL_SCHEDULER=1` in the web service environment and configure the
+Signal groups you want to poll.
+
+* Polling cadence – override `SIGNAL_SCHEDULER_INTERVAL_SECONDS` to change the
+  interval (defaults to four hours).
+* Group configuration – define `SIGNAL_SCHEDULER_GROUPS` as JSON. Each entry may
+  be a string (just the Signal group name) or an object with custom settings:
+
+  ```json
+  [
+    {
+      "name": "Master-Trainer/UAS/C-UAS",
+      "log_file": "static/logs/news_log_master_trainer.log",
+      "added_by": "Master-Trainer/UAS/C-UAS",
+      "target_count": 10
+    },
+    "IrregularChat: Counter UxV",
+    "IrregularChat: sUAS"
+  ]
+  ```
+
+  Relative log paths are resolved inside the repository (for example
+  `static/logs/...`). `added_by` defaults to the group name and `target_count`
+  falls back to `SIGNAL_TARGET_COUNT` (default 10).
+* Single-group shortcut – if you only have one Signal group, you can skip the
+  JSON and set `SIGNAL_GROUP_NAME`, `SIGNAL_LOG_FILE`, and `SIGNAL_ADDED_BY`
+  instead.
+
+The scheduler reuses the same `scripts.signal_service` worker that the Docker
+composition runs. The Flask app keeps the thread alive across requests, so the
+Signal URLs continue to trickle into the news feed at the configured cadence.
