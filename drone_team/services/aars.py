@@ -1,6 +1,7 @@
 # drone_team/services/aars.py
 from pathlib import Path
 import pandas as pd, uuid, datetime as dt, re, csv, os
+from pandas.errors import EmptyDataError
 from werkzeug.utils import secure_filename
 
 AAR_COLUMNS = ["id","created_at","username","unit","drones","training_date","tags","report","summary","attachment"]
@@ -120,7 +121,12 @@ def normalize_aar_csv_formats(app):
     p = aar_path(app)
     if not p.exists():
         return
-    df = pd.read_csv(p)
+    try:
+        df = pd.read_csv(p)
+    except EmptyDataError:
+        # Nothing to normalize yet; rewrite the header for future writes and exit.
+        pd.DataFrame(columns=AAR_COLUMNS).to_csv(p, index=False)
+        return
     CREATED_AT_FMT = "%Y-%m-%d %H:%M:%S"
     TRAINING_DATE_FMT = "%Y-%m-%d"
     ca = pd.to_datetime(df.get("created_at"), format=CREATED_AT_FMT, errors="coerce")
