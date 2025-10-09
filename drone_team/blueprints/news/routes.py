@@ -5,7 +5,11 @@ from flask import render_template, request, jsonify, current_app, flash, redirec
 from flask_login import login_required, current_user 
 from drone_team.services import news as news_svc 
 from drone_team.authz import admin_required
-from drone_team.signal_scheduler import run_ingestion_once
+from drone_team.signal_scheduler import (
+    ManualIngestionStatus,
+    get_manual_ingestion_status,
+    trigger_manual_ingestion,
+)
 from werkzeug.utils import secure_filename
 from drone_team.extensions import db
 from drone_team.models import WhitePaper
@@ -111,33 +115,38 @@ def delete_article(article_id):
 @news_bp.route("/admin/signal/update", methods=["POST"])
 @admin_required
 def run_signal_update():
-    try:
-        results = run_ingestion_once(current_app)
-    except RuntimeError as exc:
-        flash(str(exc), "error")
-        return redirect(url_for("news.uas_news"))
-    except Exception as exc:  # pragma: no cover - defensive logging
-        current_app.logger.exception("Signal update failed: %s", exc)
-        flash("Signal update failed. Check the logs for details.", "error")
-        return redirect(url_for("news.uas_news"))
+    previous_status = get_manual_ingestion_status()
+    result = trigger_manual_ingestion(current_app)
 
-    if not results:
-        flash("No Signal groups are configured for ingestion.", "warning")
-        return redirect(url_for("news.uas_news"))
+    flash(result.message, result.category)
 
-    failures = [group.name for group, exit_code in results if exit_code != 0]
-    if failures:
-        flash(
-            "Signal update completed with errors for: " + ", ".join(failures),
-            "error",
-        )
-    else:
-        flash("Signal update completed successfully.", "success")
+    status = result.status or get_manual_ingestion_status()
 
-    if os.getenv("SIGNAL_DRY_RUN", "").strip().lower() in {"1", "true", "t", "yes", "y", "on"}:
-        flash("Signal update ran in dry-run mode; no articles were added.", "info")
+    if not result.started and status and status.is_running() and status.started_at:
+        timestamp = status.started_at.strftime("%Y-%m-%d %H:%M UTC")
+        flash(f"Background Signal update has been running since {timestamp}.", "info")
+
+    if previous_status and previous_status.state in {"succeeded", "completed_with_errors", "failed"}:
+        _flash_manual_status_summary(previous_status)
+
+    if status and status.dry_run:
+        flash("Signal update is running in dry-run mode; no articles will be added.", "info")
 
     return redirect(url_for("news.uas_news"))
+
+
+def _flash_manual_status_summary(status: ManualIngestionStatus) -> None:
+    if status.state == "succeeded":
+        flash("Previous Signal update completed successfully.", "success")
+    elif status.state == "completed_with_errors":
+        failures = status.error or "unknown group"
+        flash(
+            "Previous Signal update completed with errors for: " + failures,
+            "error",
+        )
+    elif status.state == "failed":
+        message = status.error or "Signal update failed. Check the logs for details."
+        flash(message, "error")
 
 # JSON search endpoint (called by sidebar JS)
 @news_bp.route("/search", methods=["GET"])

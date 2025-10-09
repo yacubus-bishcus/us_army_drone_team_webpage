@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json, os, threading, time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -20,6 +21,36 @@ class GroupConfig:
     log_file: str
     added_by: str
     target_count: int
+
+
+@dataclass
+class ManualIngestionStatus:
+    """Represents the lifecycle and outcome of a manual ingestion run."""
+
+    state: str = "idle"
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    results: Optional[list[tuple[GroupConfig, int]]] = None
+    error: Optional[str] = None
+    dry_run: bool = False
+
+    def is_running(self) -> bool:
+        return self.state == "running"
+
+
+@dataclass(frozen=True)
+class ManualTriggerResult:
+    """Return value from :func:`trigger_manual_ingestion`."""
+
+    started: bool
+    message: str
+    category: str
+    status: Optional[ManualIngestionStatus]
+
+
+_manual_run_lock = threading.Lock()
+_manual_run_thread: Optional[threading.Thread] = None
+_manual_run_status = ManualIngestionStatus()
 
 
 def _strtobool(value: Optional[str], default: bool = False) -> bool:
@@ -78,6 +109,19 @@ def _normalize_group(app: Flask, payload: dict | str, default_target: int) -> Op
         log_file=resolved_log,
         added_by=resolved_added_by,
         target_count=resolved_target,
+    )
+
+
+def _clone_status(status: Optional[ManualIngestionStatus]) -> Optional[ManualIngestionStatus]:
+    if status is None:
+        return None
+    return ManualIngestionStatus(
+        state=status.state,
+        started_at=status.started_at,
+        finished_at=status.finished_at,
+        results=list(status.results) if status.results is not None else None,
+        error=status.error,
+        dry_run=status.dry_run,
     )
 
 
@@ -198,17 +242,10 @@ def _run_iteration(
         thread.join()
 
 
-def run_ingestion_once(app: Flask) -> list[tuple[GroupConfig, int]]:
-    """Run Signal ingestion immediately for the configured group(s).
-
-    Returns a list of ``(GroupConfig, exit_code)`` tuples. When no groups are
-    configured an empty list is returned. A ``RuntimeError`` is raised if the
-    environment lacks required settings.
-    """
-
+def _prepare_run(app: Flask) -> Optional[tuple[list[GroupConfig], str, str, bool, Optional[float]]]:
     groups = _load_group_configs(app)
     if not groups:
-        return []
+        return None
 
     phone = os.getenv("SIGNAL_PHONE_NUMBER")
     if not phone:
@@ -234,6 +271,18 @@ def run_ingestion_once(app: Flask) -> list[tuple[GroupConfig, int]]:
             )
             max_minutes = None
 
+    return groups, phone, signal_cli, dry_run, max_minutes
+
+
+def _execute_run(
+    app: Flask,
+    groups: list[GroupConfig],
+    *,
+    phone: str,
+    signal_cli: str,
+    dry_run: bool,
+    max_minutes: Optional[float],
+) -> list[tuple[GroupConfig, int]]:
     results: list[tuple[GroupConfig, int]] = []
     for group in groups:
         exit_code = _run_group(
@@ -245,8 +294,128 @@ def run_ingestion_once(app: Flask) -> list[tuple[GroupConfig, int]]:
             max_minutes=max_minutes,
         )
         results.append((group, exit_code))
-
     return results
+
+
+def run_ingestion_once(app: Flask) -> list[tuple[GroupConfig, int]]:
+    """Run Signal ingestion immediately for the configured group(s).
+
+    Returns a list of ``(GroupConfig, exit_code)`` tuples. When no groups are
+    configured an empty list is returned. A ``RuntimeError`` is raised if the
+    environment lacks required settings.
+    """
+
+    prepared = _prepare_run(app)
+    if not prepared:
+        return []
+
+    groups, phone, signal_cli, dry_run, max_minutes = prepared
+    return _execute_run(
+        app,
+        groups,
+        phone=phone,
+        signal_cli=signal_cli,
+        dry_run=dry_run,
+        max_minutes=max_minutes,
+    )
+
+
+def trigger_manual_ingestion(app: Flask) -> ManualTriggerResult:
+    """Start an ingestion run in a background thread."""
+
+    try:
+        prepared = _prepare_run(app)
+    except RuntimeError as exc:
+        return ManualTriggerResult(False, str(exc), "error", get_manual_ingestion_status())
+
+    if not prepared:
+        return ManualTriggerResult(
+            False,
+            "No Signal groups are configured for ingestion.",
+            "warning",
+            get_manual_ingestion_status(),
+        )
+
+    groups, phone, signal_cli, dry_run, max_minutes = prepared
+
+    with _manual_run_lock:
+        global _manual_run_thread, _manual_run_status
+
+        if _manual_run_thread and _manual_run_thread.is_alive():
+            status = _clone_status(_manual_run_status)
+            started_at = (
+                status.started_at.strftime("%Y-%m-%d %H:%M UTC")
+                if status and status.started_at
+                else "unknown"
+            )
+            message = f"Signal update is already running (started {started_at})."
+            return ManualTriggerResult(False, message, "warning", status)
+
+        status = ManualIngestionStatus(
+            state="running",
+            started_at=datetime.utcnow(),
+            finished_at=None,
+            results=[],
+            error=None,
+            dry_run=dry_run,
+        )
+        _manual_run_status = status
+
+        def _target() -> None:
+            nonlocal groups, phone, signal_cli, dry_run, max_minutes, status
+            try:
+                with app.app_context():
+                    results = _execute_run(
+                        app,
+                        groups,
+                        phone=phone,
+                        signal_cli=signal_cli,
+                        dry_run=dry_run,
+                        max_minutes=max_minutes,
+                    )
+                    failures = [group.name for group, code in results if code != 0]
+                    status.results = results
+                    status.finished_at = datetime.utcnow()
+                    if failures:
+                        status.state = "completed_with_errors"
+                        status.error = ", ".join(failures)
+                        app.logger.warning(
+                            "Signal manual ingestion completed with failures for: %s",
+                            ", ".join(failures),
+                        )
+                    else:
+                        status.state = "succeeded"
+                        status.error = None
+                        app.logger.info("Signal manual ingestion completed successfully")
+            except Exception as exc:  # pragma: no cover - defensive logging
+                app.logger.exception("Signal manual ingestion failed: %s", exc)
+                status.finished_at = datetime.utcnow()
+                status.state = "failed"
+                status.error = str(exc)
+                status.results = None
+            finally:
+                with _manual_run_lock:
+                    _manual_run_thread = None
+
+        thread = threading.Thread(
+            target=_target,
+            name="signal-manual-run",
+            daemon=True,
+        )
+        _manual_run_thread = thread
+        thread.start()
+
+        return ManualTriggerResult(
+            True,
+            "Signal update started in the background. Monitor the logs for progress.",
+            "success",
+            _clone_status(status),
+        )
+
+
+def get_manual_ingestion_status() -> Optional[ManualIngestionStatus]:
+    with _manual_run_lock:
+        return _clone_status(_manual_run_status)
 
 
 def _worker(
@@ -343,4 +512,11 @@ def init_signal_scheduler(app: Flask) -> None:
         _scheduler_started = True
 
 
-__all__ = ["init_signal_scheduler", "run_ingestion_once"]
+__all__ = [
+    "init_signal_scheduler",
+    "run_ingestion_once",
+    "trigger_manual_ingestion",
+    "get_manual_ingestion_status",
+    "ManualIngestionStatus",
+    "ManualTriggerResult",
+]
