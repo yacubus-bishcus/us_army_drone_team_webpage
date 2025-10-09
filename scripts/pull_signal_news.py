@@ -26,9 +26,11 @@ Ex: python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.
 
 Pass ``--log-file=/path/to/log`` to duplicate console output to a persistent log.
 Pass ``--message-log=/path/to/messages.jsonl`` to dump fetched Signal messages as JSON lines.
-Pass ``--since=<iso-or-millis>`` to override the checkpoint and reprocess older
-history, and ``--sender=<phone>`` to restrict ingestion to a specific
-conversation (for example "Note to Self").
+Pass ``--sender=<phone>`` to restrict ingestion to a specific conversation (for example
+"Note to Self").
+Use ``--source-log=/path --group-name="<Group Name>"`` to scan an existing
+``signal_group_reader`` log for URLs and ingest them into the CSV without
+calling ``signal-cli``.
 """
 from __future__ import annotations
 
@@ -47,6 +49,7 @@ from drone_team.services import news as news_svc
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 STATE_FILENAME = "signal_ingest_state.json"
 DEFAULT_ADDED_BY = "signal_bot"
+LOG_MESSAGE_RE = re.compile(r"\[(?P<ts>[^\]]+)\]\s*(?P<sender>[^:]+):\s*(?P<text>.+)")
 
 
 @dataclass
@@ -91,27 +94,8 @@ def _save_state_path(path: Path, timestamp: int) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _parse_since_argument(value: str) -> int:
-    value = (value or "").strip()
-    if not value:
-        raise argparse.ArgumentTypeError("--since requires a non-empty value")
-
-    if value.isdigit():
-        return int(value)
-
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            "--since must be milliseconds since epoch or an ISO 8601 datetime"
-        ) from exc
-
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    else:
-        parsed = parsed.astimezone(timezone.utc)
-
-    return int(parsed.timestamp() * 1000)
+def _utc_now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
 def _parse_signal_cli_output(
@@ -159,6 +143,48 @@ def _parse_signal_cli_output(
     return messages
 
 
+def _parse_log_timestamp(value: str) -> Optional[int]:
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    else:
+        parsed = parsed.astimezone(timezone.utc)
+    return int(parsed.timestamp() * 1000)
+
+
+def _iter_log_entries(path: Path) -> Iterable[Tuple[int, str]]:
+    """Yield (timestamp_ms, text) pairs from signal_group_reader log lines."""
+    try:
+        with path.open("r", encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                match = LOG_MESSAGE_RE.search(line)
+                if not match:
+                    continue
+                text = match.group("text").strip()
+                if not text:
+                    continue
+                ts_raw = (match.group("ts") or "").strip()
+                timestamp = _parse_log_timestamp(ts_raw) or _utc_now_ms()
+                yield timestamp, text
+    except OSError as exc:
+        logging.error("Failed to read log file %s: %s", path, exc)
+        raise
+
+
+def _normalize_added_by(value: Optional[str], fallback: Optional[str]) -> str:
+    for candidate in (value or "", fallback or ""):
+        cleaned = candidate.strip()
+        if cleaned:
+            return cleaned
+    return DEFAULT_ADDED_BY
+
+
 @lru_cache(maxsize=1)
 def _signal_cli_supports_group_flag(binary: str) -> bool:
     """Return True if `signal-cli receive` advertises a `--group` or `-g` flag."""
@@ -184,36 +210,11 @@ def _signal_cli_supports_group_flag(binary: str) -> bool:
     return re.search(pattern, help_text) is not None
 
 
-@lru_cache(maxsize=1)
-def _signal_cli_supports_since_flag(binary: str) -> bool:
-    """Return True if `signal-cli receive` advertises a `--since` flag."""
-    help_cmd = [binary, "receive", "--help"]
-    try:
-        proc = subprocess.run(help_cmd, check=True, capture_output=True, text=True)
-        help_text = (proc.stdout or "") + (proc.stderr or "")
-    except FileNotFoundError:
-        raise
-    except PermissionError:
-        raise
-    except subprocess.CalledProcessError as exc:
-        help_text = (exc.stdout or "") + (exc.stderr or "")
-        logging.debug(
-            "Failed to detect since flag (exit code %s): %s",
-            exc.returncode,
-            help_text,
-        )
-
-    pattern = r"(?m)(^|\s)--since\b"
-    return re.search(pattern, help_text) is not None
-
-
 def _build_signal_cli_cmd(
     binary: str,
     phone_number: str,
     *,
-    since_timestamp: Optional[int] = None,
     receive_limit: Optional[int] = None,
-    supports_since: bool = True,
 ) -> Sequence[str]:
     cmd = [binary, "--output=json", "--username", phone_number, "receive"]
     if receive_limit:
@@ -227,25 +228,14 @@ def _fetch_signal_messages(
     phone_number: str,
     group_id: Optional[str],
     sender: Optional[str],
-    since_timestamp: Optional[int],
     receive_limit: Optional[int],
     ignore_cli_support_flag: Optional[bool],
 ) -> List[SignalMessage]:
-    supports_since = True
-    if since_timestamp:
-        supports_since = _signal_cli_supports_since_flag(binary)
-        if not supports_since:
-            logging.info(
-                "signal-cli receive on this host does not support --since; fetching full history and filtering client-side",
-            )
-
     cmd = list(
         _build_signal_cli_cmd(
             binary,
             phone_number,
-            since_timestamp=since_timestamp,
             receive_limit=receive_limit,
-            supports_since=supports_since,
         )
     )
 
@@ -283,14 +273,6 @@ def _fetch_signal_messages(
         raise
 
     messages = _parse_signal_cli_output(proc.stdout, group_id, sender)
-    if since_timestamp and not supports_since:
-        before = len(messages)
-        messages = [msg for msg in messages if msg.timestamp >= since_timestamp]
-        logging.info(
-            "Filtered %d message(s) older than %s client-side due to missing --since support",
-            before - len(messages),
-            since_timestamp,
-        )
     logging.info("Fetched %d candidate messages", len(messages))
     logging.info(f"Messages: {messages}")
     return messages
@@ -334,8 +316,8 @@ def ingest_signal_urls(
     signal_cli_override: Optional[str]=None,
     ignore_cli_support_flag: bool=False,
     message_log: Optional[str] = None,
-    since_override: Optional[int] = None,
     sender_filter: Optional[str] = None,
+    added_by_override: Optional[str] = None,
 ) -> int:
     binary = signal_cli_override or os.environ.get("SIGNAL_CLI_BIN", "signal-cli")
     phone = os.environ.get("SIGNAL_PHONE_NUMBER")
@@ -343,7 +325,7 @@ def ingest_signal_urls(
     sender = sender_filter or os.environ.get("SIGNAL_SENDER")
     receive_limit_env = os.environ.get("SIGNAL_RECEIVE_LIMIT")
     receive_limit = int(receive_limit_env) if receive_limit_env else None
-    added_by = os.environ.get("SIGNAL_ADDED_BY", DEFAULT_ADDED_BY)
+    added_by = _normalize_added_by(added_by_override, os.environ.get("SIGNAL_ADDED_BY"))
 
     if not phone:
         logging.error("SIGNAL_PHONE_NUMBER environment variable is required")
@@ -370,19 +352,23 @@ def ingest_signal_urls(
             last_ts = _load_state_path(state_path)
             logging.info("Last processed timestamp: %s", last_ts)
 
-            since_ts = since_override if since_override is not None else last_ts
-            if since_override is not None:
-                logging.info("Using user-supplied --since override: %s", since_override)
-
             messages = _fetch_signal_messages(
                 binary=binary,
                 phone_number=phone,
                 group_id=group_id,
                 sender=sender,
-                since_timestamp=since_ts,
                 receive_limit=receive_limit,
                 ignore_cli_support_flag=ignore_cli_support_flag,
             )
+
+            if last_ts:
+                before = len(messages)
+                messages = [msg for msg in messages if msg.timestamp > last_ts]
+                logging.info(
+                    "Filtered %d message(s) older than or equal to last checkpoint (%s)",
+                    before - len(messages),
+                    last_ts,
+                )
 
             if message_log_path:
                 _write_message_log(messages, message_log_path)
@@ -395,7 +381,7 @@ def ingest_signal_urls(
             logging.info("Found %d existing URLs in feed", len(existing_urls))
 
             added_count = 0
-            newest_ts = (since_ts or last_ts) or 0
+            newest_ts = last_ts or 0
             discovered: List[Tuple[str, int]] = []
 
             for msg in sorted(messages, key=lambda m: m.timestamp):
@@ -435,19 +421,23 @@ def ingest_signal_urls(
             return 0 if added_count >= 0 else 1
 
     # Dry-run flow (outside app context)
-    since_ts = since_override if since_override is not None else last_ts
-    if since_override is not None:
-        logging.info("Using user-supplied --since override: %s", since_override)
-
     messages = _fetch_signal_messages(
         binary=binary,
         phone_number=phone,
         group_id=group_id,
         sender=sender,
-        since_timestamp=since_ts,
         receive_limit=receive_limit,
         ignore_cli_support_flag=ignore_cli_support_flag,
     )
+
+    if last_ts:
+        before = len(messages)
+        messages = [msg for msg in messages if msg.timestamp > last_ts]
+        logging.info(
+            "Filtered %d message(s) older than or equal to last checkpoint (%s)",
+            before - len(messages),
+            last_ts,
+        )
 
     if message_log_path:
         _write_message_log(messages, message_log_path)
@@ -457,7 +447,7 @@ def ingest_signal_urls(
         return 0
 
     discovered: List[Tuple[str, int]] = []
-    newest_ts = (since_ts or last_ts) or 0
+    newest_ts = last_ts or 0
     for msg in sorted(messages, key=lambda m: m.timestamp):
         newest_ts = max(newest_ts, msg.timestamp)
         for url in _iter_urls(msg.text):
@@ -468,6 +458,85 @@ def ingest_signal_urls(
     if state_path and newest_ts and newest_ts != last_ts:
         _save_state_path(state_path, newest_ts)
         logging.info("Persisted newest timestamp %s (dry-run mode)", newest_ts)
+
+    return 0
+
+
+def ingest_urls_from_log_file(
+    log_path: str,
+    *,
+    group_name: str,
+    added_by: str,
+    dry_run: bool = False,
+) -> int:
+    path = Path(log_path).expanduser().resolve()
+    if not path.exists():
+        logging.error("Log file %s does not exist", path)
+        return 1
+
+    logging.info("Scanning log %s for URLs (group: %s)", path, group_name)
+
+    entries = list(_iter_log_entries(path))
+    if not entries:
+        logging.info("No message lines found in %s", path)
+        return 0
+
+    if dry_run:
+        seen_urls: Set[str] = set()
+        discovered: List[Tuple[str, int]] = []
+        for timestamp, text in entries:
+            for url in _iter_urls(text):
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                discovered.append((url, timestamp))
+        if discovered:
+            _print_urls_summary(discovered)
+        else:
+            logging.info("No URLs discovered in log %s", path)
+        return 0
+
+    app = create_app()
+    with app.app_context():
+        existing_urls = _load_existing_urls(current_app)
+        logging.info("Found %d existing URLs in feed", len(existing_urls))
+
+        seen_this_run: Set[str] = set()
+        discovered: List[Tuple[str, int]] = []
+        added_count = 0
+
+        for timestamp, text in entries:
+            urls = list(_iter_urls(text))
+            if not urls:
+                continue
+
+            logging.debug(
+                "Processing log line with %d URL(s) at %s",
+                len(urls),
+                datetime.fromtimestamp(timestamp / 1000.0),
+            )
+
+            for url in urls:
+                if url in seen_this_run or url in existing_urls:
+                    logging.info("Skipping duplicate URL from log: %s", url)
+                    continue
+                try:
+                    news_svc.add_article_by_url(current_app, url, added_by=added_by)
+                except Exception:
+                    logging.exception("Failed to ingest URL %s from log", url)
+                    continue
+
+                seen_this_run.add(url)
+                existing_urls.add(url)
+                added_count += 1
+                discovered.append((url, timestamp))
+
+        if discovered:
+            _print_urls_summary(discovered)
+        else:
+            logging.info("No URLs discovered in log %s", path)
+
+        logging.info("Ingested %d new article(s) from log file", added_count)
 
     return 0
 
@@ -500,14 +569,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Optional path to write fetched Signal messages as JSON lines",
     )
     parser.add_argument(
-        "--since",
-        type=_parse_since_argument,
-        help=(
-            "Optional timestamp override (milliseconds since epoch or ISO 8601)"
-            " to re-process older messages."
-        ),
-    )
-    parser.add_argument(
         "--sender",
         dest="sender",
         help=(
@@ -519,6 +580,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--ignore_cli_support_flag",
         action="store_true",
         help=("Optional override for the cli supporting --group or -g flags"),
+    )
+    parser.add_argument(
+        "--source-log",
+        dest="source_log",
+        help="Path to a signal_group_reader log file to ingest instead of calling signal-cli.",
+    )
+    parser.add_argument(
+        "--group-name",
+        dest="group_name",
+        help="Signal group name (used for tagging ingested URLs when reading from a log).",
+    )
+    parser.add_argument(
+        "--added-by",
+        dest="added_by",
+        help="Override the added_by value stored in the CSV (defaults to the group name for log ingestion).",
     )
     args = parser.parse_args(argv)
 
@@ -532,14 +608,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ]
 
     logging.basicConfig(**logging_kwargs)
+
+    if args.source_log:
+        if not args.group_name:
+            parser.error("--group-name is required when using --source-log")
+        added_by_value = _normalize_added_by(args.added_by, args.group_name)
+        return ingest_urls_from_log_file(
+            args.source_log,
+            group_name=args.group_name,
+            added_by=added_by_value,
+            dry_run=args.dry_run,
+        )
+
     return ingest_signal_urls(
         dry_run=args.dry_run,
         state_file_override=args.state_file,
         signal_cli_override=args.signal_cli,
         ignore_cli_support_flag=args.ignore_cli_support_flag,
         message_log=args.message_log,
-        since_override=args.since,
         sender_filter=args.sender,
+        added_by_override=args.added_by,
     )
 
 

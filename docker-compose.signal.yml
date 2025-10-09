@@ -1,0 +1,48 @@
+services:
+  signal_master_trainer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.signal_service
+    environment:
+      SIGNAL_PHONE_NUMBER: ${SIGNAL_PHONE_NUMBER}
+      SIGNAL_GROUP_NAME: "Master-Trainer/UAS/C-UAS"
+      SIGNAL_LOG_FILE: /app/static/logs/news_log_master_trainer.log
+      SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
+      SIGNAL_TARGET_COUNT: 10
+      SIGNAL_ADDED_BY: "Master-Trainer/UAS/C-UAS"
+    volumes:
+      - ./static/logs:/app/static/logs
+      - ${SIGNAL_CLI_DATA:-./.signal-cli}:/root/.local/share/signal-cli
+    restart: "no"
+
+  signal_counter_uxv:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.signal_service
+    environment:
+      SIGNAL_PHONE_NUMBER: ${SIGNAL_PHONE_NUMBER}
+      SIGNAL_GROUP_NAME: "IrregularChat: Counter UxV"
+      SIGNAL_LOG_FILE: /app/static/logs/news_log_counter_uxv.log
+      SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
+      SIGNAL_TARGET_COUNT: 10
+      SIGNAL_ADDED_BY: "IrregularChat: Counter UxV"
+    volumes:
+      - ./static/logs:/app/static/logs
+      - ${SIGNAL_CLI_DATA:-./.signal-cli}:/root/.local/share/signal-cli
+    restart: "no"
+
+  signal_suas:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.signal_service
+    environment:
+      SIGNAL_PHONE_NUMBER: ${SIGNAL_PHONE_NUMBER}
+      SIGNAL_GROUP_NAME: "IrregularChat: sUAS"
+      SIGNAL_LOG_FILE: /app/static/logs/news_log_suas.log
+      SIGNAL_CLI_BIN: "/usr/local/bin/signal-cli"
+      SIGNAL_TARGET_COUNT: 10
+      SIGNAL_ADDED_BY: "IrregularChat: sUAS"
+    volumes:
+      - ./static/logs:/app/static/logs
+      - ${SIGNAL_CLI_DATA:-./.signal-cli}:/root/.local/share/signal-cli
+    restart: "no"

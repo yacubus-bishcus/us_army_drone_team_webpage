@@ -3,6 +3,8 @@ from flask import Flask, request, redirect
 from flask_login import current_user
 from dotenv import load_dotenv
 from pathlib import Path
+import os
+
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from .config import Config
@@ -10,13 +12,7 @@ from .extensions import login_manager, db as sqla_db, migrate
 from .db import init_users_db, seed_admin_user, init_team_applications
 from .services.uas import create_csv_if_missing
 from .services.aars import create_aar_csv_if_missing
-import webbrowser, os
-from urllib.parse import quote_plus
-from threading import Timer
 from .cli import register_cli
-
-def _open_browser_once():
-    webbrowser.open_new("http://127.0.0.1:5000")
 
 def create_app():
     load_dotenv()
@@ -138,8 +134,6 @@ def create_app():
 
     # ★ Only auto-open a browser for local dev (avoid in PaaS/production workers)
     register_cli(app)
-    if os.getenv("RUN_LOCAL", "1") == "1" and not os.getenv("GUNICORN_CMD_ARGS"):
-        Timer(1, _open_browser_once).start()
 
     return app
 

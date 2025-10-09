@@ -1,0 +1,65 @@
+FROM python:3.11-slim
+
+ARG VERSION=0.13.20
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/bin:${PATH}"
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      curl \
+      libpcsclite1 \
+      openjdk-21-jre-headless \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install signal-cli with the expected layout:
+# /app/bin/signal-cli  and  /app/lib/
+ARG VERSION=0.13.20
+# ---- Step 1: prepare /opt ---------------------------------------------------
+    RUN set -eux; \
+    mkdir -p /opt; \
+    ls -al /opt
+
+# ---- Step 2: download tarball ----------------------------------------------
+ARG VERSION=0.13.20
+RUN set -eux; \
+    curl -fsSL -o /tmp/signal-cli.tgz \
+      "https://github.com/AsamK/signal-cli/releases/download/v${VERSION}/signal-cli-${VERSION}.tar.gz"; \
+    ls -lh /tmp/signal-cli.tgz
+
+# ---- Step 3: extract into /opt and inspect ---------------------------------
+RUN set -eux; \
+    tar -xzf /tmp/signal-cli.tgz -C /opt; \
+    ls -al /opt; \
+    ls -al /opt/signal-cli-*/bin | head -20
+
+# ---- Step 4: finalize layout + symlink on PATH ------------------------------
+RUN set -eux; \
+    mv /opt/signal-cli-* /opt/signal-cli; \
+    ln -sf /opt/signal-cli/bin/signal-cli /usr/local/bin/signal-cli; \
+    ls -al /usr/local/bin/signal-cli; \
+    test -x /usr/local/bin/signal-cli
+
+# ---- Step 5: verify runtime -------------------------------------------------
+RUN set -eux; \
+    java -version; \
+    signal-cli --version; \
+    find /opt/signal-cli -maxdepth 2 -type d -print; \
+    find /opt/signal-cli/lib -maxdepth 1 -name '*.jar' | head
+
+# ---- Step 6: clean up -------------------------------------------------------
+RUN set -eux; \
+    rm -f /tmp/signal-cli.tgz
+
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+RUN chmod +x docker/signal_service_entrypoint.sh
+ENTRYPOINT ["/app/docker/signal_service_entrypoint.sh"]
+

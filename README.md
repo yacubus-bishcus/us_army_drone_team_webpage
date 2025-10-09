@@ -36,21 +36,6 @@ The script stores its checkpoint in `instance/data/signal_ingest_state.json`
 so repeated runs only process new messages. URLs that already exist in the
 CSV-backed news feed are skipped automatically.
 
-Use the optional `SIGNAL_SENDER` variable (or the equivalent
-`--sender=+15555555555` CLI flag) to focus on a specific contact or your own
-"Note to Self" conversation. For ad-hoc reprocessing of older history you can
-pass `--since` with either an ISO 8601 datetime or a millisecond epoch
-timestamp. On older `signal-cli` releases (for example 0.13.20) the
-utility does not expose a native `--since` flag; in that case the script
-downloads the available history and performs the timestamp filtering
-locally before ingesting anything:
-timestamp:
-
-```bash
-SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news \
-  --since="2024-01-01T00:00:00Z" --sender="+15555555555"
-```
-
 To test the Signal connection without writing to the CSV, append `--dry-run`.
 You can optionally point the checkpoint at a custom location with
 `--state-file=/tmp/signal-state.json` when running in this mode:
@@ -59,55 +44,97 @@ You can optionally point the checkpoint at a custom location with
 SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.json
 ```
 
-### Understanding the Signal tooling
-
-The Signal applications you may already use—**Signal for iOS/Android** (the
-mobile app) and **Signal Desktop** (the graphical desktop client)—do not ship
-with `signal-cli`. They all talk to the same Signal service, but `signal-cli`
-is a separate, headless command-line utility that exposes automation-friendly
-APIs. You must install and link `signal-cli` to the same phone number that is a
-member of the target group chat before the ingestion script can read messages.
-
-Once `signal-cli` is registered with your Signal account it can co-exist with
-the regular mobile and desktop apps; you do not need a new phone number.
-
 ### Installing `signal-cli`
 **Linux (Debian/Ubuntu)** – there is no official `apt` package for
   `signal-cli`. Download the latest release tarball and install it manually.
-  Choose the option that matches your permissions:
-
-  *System-wide install (requires sudo)*
-
-  ```bash
-  VERSION="0.12.0"  # Replace with the current version from the releases page
-  curl -LO https://github.com/AsamK/signal-cli/releases/download/v${VERSION}/signal-cli-${VERSION}-Linux-native.tar.gz
-  sudo mkdir -p /opt/signal-cli
-  sudo tar -xzf signal-cli-${VERSION}-Linux-native.tar.gz -C /opt/signal-cli --strip-components=1
-  sudo ln -sf /opt/signal-cli/bin/signal-cli /usr/local/bin/signal-cli
-  ```
-
-  *User install (no sudo required)*
-
-  ```bash
-  VERSION="0.12.0"  # Replace with the current version from the releases page
-  curl -LO https://github.com/AsamK/signal-cli/releases/download/v${VERSION}/signal-cli-${VERSION}-Linux-native.tar.gz
-  mkdir -p "$HOME/.local/lib/signal-cli"
-  tar -xzf signal-cli-${VERSION}-Linux-native.tar.gz -C "$HOME/.local/lib/signal-cli" --strip-components=1
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$HOME/.local/lib/signal-cli/bin/signal-cli" "$HOME/.local/bin/signal-cli"
-  ```
-
-  Keeping the binary in a dedicated directory makes upgrades easy—just download
-  the latest tarball and repeat the extraction step.
-
+  
+`docker compose -f docker-compose.signal.yml run --rm --no-deps   --entrypoint signal-cli signal_master_trainer link --name "CLI2"`
+In another terminal:
+`URI='PASTE_THE_EXACT_sgnl://linkdevice_LINE_HERE'`
+`printf '%s' "$URI" | qrencode -t ansiutf8`
 You can list all available groups to discover the group identifier needed
 for the ingestion script:
 
 ```bash
 signal-cli --username +15555555555 listGroups
 ```
-The resulting group ID (a long base64-like string) is what you pass in the
-`SIGNAL_GROUP_ID` environment variable.
+
+### Dockerised Signal service runners
+
+If you prefer to keep the Signal ingestion scripts in dedicated containers,
+use the provided `docker-compose.signal.yml` file. It builds a lightweight
+image (defined in `docker/Dockerfile.signal_service`) that ships the Flask
+application code and executes `python -m scripts.signal_service` inside the
+container.
+
+1. Copy `.env.example` to `.env` (or create `.env` manually) and define:
+
+   ```ini
+   SIGNAL_PHONE_NUMBER=+15555555555
+   SIGNAL_CLI_BIN=/usr/local/bin/signal-cli  # Optional override inside the container
+   SIGNAL_TARGET_COUNT=10                    # Stop after ingesting 10 new URLs
+   # Optional: override the runtime limit (default 2 min in SANDBOX, 180 min otherwise)
+   # SIGNAL_MAX_MINUTES=15
+   ```
+
+   The default `SIGNAL_CLI_DATA` value mounts a local `./.signal-cli` folder
+   into the container at `/root/.local/share/signal-cli`. Place the linked
+   profile there (or update the variable to point to an existing directory).
+
+   The Signal worker image now downloads the headless `signal-cli` release at
+   build time (default version `0.13.20`). Override the version with
+   `--build-arg SIGNAL_CLI_VERSION=0.13.25` when invoking `docker compose build`
+   if you need a newer release.
+
+   > The bundled binary lives only inside the container image, so it will not
+   > conflict with any `signal-cli` you have already installed on your host.
+   > You can keep the local installation (useful for registering or linking the
+   > account) or remove it; the containerised workers run with their own copy.
+
+2. Ensure the Signal profile directory contains the registration files for the
+   same phone number you configured in `SIGNAL_PHONE_NUMBER`.
+
+3. Ensure docker is running, give your user permission to talk to the daemon, and test.
+   > Ensure Docker is running with `sudo systemctl status docker`
+   > If it says inactive failed or dead run: `sudo systemctl start docker`
+   > Enable auto-start on boot `sudo systemctl enable docker`
+   > Give your user permission to talk to the daemon `sudo usermod -aG docker $USER`
+   > Refresh session `newgrp docker`
+   > Test with `docker run hello-world`
+   
+4. Start the three worker containers—one per Signal group—with:
+
+   ```bash
+   docker compose -f docker-compose.signal.yml up --build -d
+   ```
+
+   > **Note:** Some environments still ship the legacy `docker-compose`
+   > standalone binary instead of the modern `docker compose` plugin. If you
+   > see an error such as `unknown shorthand flag: 'f' in -f`, rerun the command
+   > replacing `docker compose` with `docker-compose`.
+
+5. Inspect the container logs to verify URL ingestion. Stop the workers with
+   `docker compose -f docker-compose.signal.yml down`
+   (or `docker-compose ... down`) when needed.
+
+   Each worker stops automatically after discovering `SIGNAL_TARGET_COUNT`
+   new URLs (default `10`) or once it has been running for the mode-specific
+   runtime limit (2 minutes with `SANDBOX_DATA_MODE=true`, 180 minutes
+   otherwise). Increase or decrease the URL threshold or provide
+   `SIGNAL_MAX_MINUTES` to override the runtime cap before launching the
+   stack.
+
+6. Verify signal workers 
+   > List the containers that started `docker compose -f docker-compose.signal.yml ps`
+   > Tail the logs to confirm activity `docker compose -f docker-compose.signal.yml logs -f signal_master_trainer`
+   > Bring the stack down when finished `docker compose -f docker-compose.signal.yml down`
+
+   **Note:**
+   > Other useful commands: 
+   > Build by name: `docker compose -f docker-compose.signal.yml up --build signal_master_trainer`
+   > Run once in foreground and remove the container afterward (useful for testing): 
+   `docker compose -f docker-compose.signal.yml run --rm signal_master_trainer`
+
 
 ### Render Cron setup
 
