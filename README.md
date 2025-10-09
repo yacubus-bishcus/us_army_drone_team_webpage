@@ -58,6 +58,8 @@ for the ingestion script:
 ```bash
 signal-cli --username +15555555555 listGroups
 ```
+**Note** sudo apt update && 
+sudo apt install openjdk-21-jre-headless may be required. 
 
 ### Dockerised Signal service runners
 
