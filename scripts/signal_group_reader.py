@@ -73,11 +73,42 @@ def get_group_id(number: str, name: str, signal_cli: str) -> str:
         raise SystemExit("Matched group has no ID field in listGroups output.")
     return gid
 
+def _dig(payload: dict, *path: str) -> Optional[str]:
+    node: Optional[dict | str] = payload
+    for key in path:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    if isinstance(node, str) and node:
+        return node
+    return None
+
+
+def _extract_group_id(envelope: dict) -> Optional[str]:
+    """Extract the group identifier from a signal-cli envelope."""
+
+    checks = (
+        ("dataMessage", "groupInfo", "groupId"),
+        ("dataMessage", "groupV2", "groupId"),
+        ("dataMessage", "group", "id"),
+        ("syncMessage", "sentMessage", "groupInfo", "groupId"),
+        ("syncMessage", "sentMessage", "groupV2", "groupId"),
+        ("syncMessage", "sentMessage", "destinationGroupId"),
+    )
+
+    for path in checks:
+        group_id = _dig(envelope, *path)
+        if group_id:
+            return group_id
+
+    return None
+
+
 def normalize(envelope: dict) -> dict:
     dm = envelope.get("dataMessage") or {}
     sm = (envelope.get("syncMessage") or {}).get("sentMessage") or {}
     text = dm.get("message") or sm.get("message") or ""
-    group = (dm.get("groupInfo") or {}).get("groupId") or (sm.get("groupInfo") or {}).get("groupId")
+    group = _extract_group_id(envelope)
     return {
         "timestamp": envelope.get("timestamp"),
         "sender": envelope.get("sourceName") or envelope.get("source") or "me",
