@@ -1,13 +1,17 @@
 #/drone_team/blueprints/team/routes.py
 import uuid, os, threading
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
 from werkzeug.utils import secure_filename
-from flask import render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
+
 from . import team_bp
 from ...services import team as svc
-from ...services import sheets as sheets_svc 
-from drone_team import mailer 
+from ...services import sheets as sheets_svc
+from drone_team import mailer
 from ...db import insert_team_application, get_latest_team_application_by_username
 from ...services import velocidrone
 
@@ -27,6 +31,15 @@ def _async_send_sendgrid(app, to, subject, body):
             app.logger.error("SendGrid mail failed (returned False).")
 
 # --- LANDING PAGE ("/") ---
+_PASSCODE_RELEASE = datetime(2025, 10, 15, 9, 0, tzinfo=ZoneInfo("America/New_York"))
+
+
+def _is_passcode_released(now: datetime | None = None) -> bool:
+    tz = ZoneInfo("America/New_York")
+    current = now.astimezone(tz) if now else datetime.now(tz)
+    return current >= _PASSCODE_RELEASE
+
+
 def _get_user_callsign(app, user) -> str:
     if not getattr(user, "is_authenticated", False):
         return ""
@@ -76,6 +89,14 @@ def index():
 
     user_callsign = _get_user_callsign(current_app, current_user)
 
+    passcode_released = _is_passcode_released()
+    velocidrone_passcode = ""
+    if passcode_released:
+        try:
+            velocidrone_passcode = velocidrone.get_passcode(current_app)
+        except velocidrone.VelocidroneConfigError as exc:
+            current_app.logger.error("Velocidrone passcode unavailable: %s", exc)
+
     return render_template(
         "team_index.html",
         summary=summary,
@@ -83,96 +104,11 @@ def index():
         operators=operators,
         cal_id=cal_id,
         tz=tz,
-        velocidrone_login_url=url_for("team.request_velocidrone_session"),
         user_callsign=user_callsign,
+        passcode_released=passcode_released,
+        velocidrone_passcode=velocidrone_passcode,
     )
 
-@team_bp.post("/velocidrone/session", endpoint="request_velocidrone_session")
-@login_required
-def request_velocidrone_session():
-    payload = request.get_json(silent=True) or {}
-    callsign = _get_user_callsign(current_app, current_user)
-    if not callsign:
-        callsign = (payload.get("callsign") or "").strip()
-
-    if not callsign:
-        return jsonify({"error": "Velocidrone callsign not found. Submit an application first."}), 400
-
-    try:
-        # Ensure integration is configured before creating a session token
-        velocidrone.get_login_url(current_app)
-        velocidrone.get_passcode(current_app)
-        token = velocidrone.create_session(current_app, current_user.id, callsign)
-    except velocidrone.VelocidroneSessionError as exc:
-        return jsonify({"error": str(exc)}), 400
-    except velocidrone.VelocidroneConfigError as exc:
-        current_app.logger.error("Velocidrone configuration error: %s", exc)
-        return jsonify({"error": "Velocidrone integration is not configured."}), 500
-
-    launch_url = url_for("team.launch_velocidrone_session", token=token, _external=True)
-    current_app.logger.info(
-        "Velocidrone session created for user %s with callsign %s",
-        current_user.id,
-        callsign,
-    )
-    return jsonify({"launchUrl": launch_url})
-
-
-@team_bp.get("/velocidrone/launch/<token>", endpoint="launch_velocidrone_session")
-@login_required
-def launch_velocidrone_session(token: str):
-    try:
-        session = velocidrone.consume_session(current_app, token)
-    except velocidrone.VelocidroneSessionError as exc:
-        flash(str(exc), "error")
-        return redirect(url_for("team.index"))
-    except velocidrone.VelocidroneConfigError as exc:
-        current_app.logger.error("Velocidrone configuration error: %s", exc)
-        flash("Velocidrone integration is not configured.", "error")
-        return redirect(url_for("team.index"))
-
-    try:
-        login_url = velocidrone.get_login_url(current_app)
-        passcode = velocidrone.get_passcode(current_app)
-    except velocidrone.VelocidroneConfigError as exc:
-        current_app.logger.error("Velocidrone configuration error: %s", exc)
-        flash("Velocidrone integration is not configured.", "error")
-        return redirect(url_for("team.index"))
-
-    payload = {
-        "callsign": session.callsign,
-        "passcode": passcode,
-    }
-
-    try:
-        response = requests.post(login_url, json=payload, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        current_app.logger.exception("Velocidrone login request failed: %s", exc)
-        return render_template(
-            "velocidrone_launch_result.html",
-            success=False,
-            message=(
-                "We could not reach the Velocidrone login service. Please verify your "
-                "client is connected and try again."
-            ),
-            callsign=session.callsign,
-        )
-
-    current_app.logger.info(
-        "Velocidrone login succeeded for user %s with callsign %s",
-        session.user_id,
-        session.callsign,
-    )
-    return render_template(
-        "velocidrone_launch_result.html",
-        success=True,
-        message=(
-            "A secure login command was sent to Velocidrone. If the client does not "
-            "sign you in automatically, launch Velocidrone and retry this action."
-        ),
-        callsign=session.callsign,
-    )
     
 # --- FULL CALENDAR PAGE ---
 @team_bp.route("/calendar", methods=["GET"])
