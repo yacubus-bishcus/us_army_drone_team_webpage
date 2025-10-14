@@ -7,150 +7,55 @@ US Army Drone Team Page
 The US Army Drone Team drives unmanned aerial systems (UAS) innovation to ensure technological and operational dominance in modern warfare through national and international competitions. By recruiting and training the next generation of drone operators, the Army Drone Team advances tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. 
 Apply Now Option leads to another page where the user can apply to the US Army Drone Team with a standard application form. After inputing applicant details the user will be emailed a confirmation with details to access the Velocidrone Racetrack.
 
+## Local development quickstart
+
+1. update the values for your environment.
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. Apply database migrations against the database URL defined in `.env`:
+   ```bash
+   python -m scripts.run_db_migrations
+   ```
+   The helper wraps `flask db upgrade`, so you do not need to export
+   `FLASK_APP`. It is safe to rerun; Alembic only applies new migrations.
+4. Initialise the auxiliary SQLite stores the app expects:
+   ```bash
+   flask --app wsgi init-db
+   ```
+5. Launch the development server:
+   ```bash
+   flask --app wsgi run --debug
+   ```
+### Local data sandboxing
+When `SANDBOX_DATA_MODE=true` (the default for local testing) the site stores
+news articles and team applications in local CSV/SQLite files. Unset the flag to
+exercise the production PostgreSQL-backed code paths. Set `SANDBOX_DATA_MODE=true` in your environment while debugging or running automated tests to ensure the production
+Postgres database and Google Sheets remain untouched. When this flag is enabled the application uses a local SQLite database (override the path with `SANDBOX_SQLITE_URL`) and all Google Sheets synchronisation is skipped.
+
 ## Collaboration workflow
 
 Active feature development now happens on the `velocidrone` branch. Create pull
 requests against that branch instead of `development` so review environments and
 deploy previews mirror the latest secure Velocidrone login work.
 
-## Local data sandboxing
+## Deployment checklist
 
-Set `SANDBOX_DATA_MODE=true` in your environment while debugging or running automated tests to ensure the production
-Postgres database and Google Sheets remain untouched. When this flag is enabled the application uses a local SQLite
-database (override the path with `SANDBOX_SQLITE_URL`) and all Google Sheets synchronisation is skipped.
-
-## Scheduled Signal ingestion for UAS News
-
-The `scripts/pull_signal_news.py` helper can be executed on a schedule (for example
-with Render Cron) to ingest URLs posted to a Signal group chat into the UAS News
-feed. The script expects a headless [`signal-cli`](https://github.com/AsamK/signal-cli)
-installation that is already linked to the Signal account participating in the
-target group.
-
-### Running locally
-
-```bash
-SIGNAL_PHONE_NUMBER="+15555555555" \
-SIGNAL_GROUP_ID="<group-id-from-signal-cli>" \
-SIGNAL_CLI_BIN="/usr/local/bin/signal-cli" \
-SIGNAL_ADDED_BY="signal_bot" \
-SIGNAL_SENDER="+15555555555" \
-python -m scripts.pull_signal_news
-```
-
-The script stores its checkpoint in `instance/data/signal_ingest_state.json`
-so repeated runs only process new messages. URLs that already exist in the
-CSV-backed news feed are skipped automatically.
-
-To test the Signal connection without writing to the CSV, append `--dry-run`.
-You can optionally point the checkpoint at a custom location with
-`--state-file=/tmp/signal-state.json` when running in this mode:
-
-```bash
-SIGNAL_PHONE_NUMBER="+15555555555" python -m scripts.pull_signal_news --dry-run --state-file=/tmp/signal-state.json
-```
-
-### Installing `signal-cli`
-**Linux (Debian/Ubuntu)** – there is no official `apt` package for
-  `signal-cli`. Download the latest release tarball and install it manually.
-  
-`docker compose -f docker-compose.signal.yml run --rm --no-deps   --entrypoint signal-cli signal_master_trainer link --name "CLI2"`
-In another terminal:
-`URI='PASTE_THE_EXACT_sgnl://linkdevice_LINE_HERE'`
-`printf '%s' "$URI" | qrencode -t ansiutf8`
-You can list all available groups to discover the group identifier needed
-for the ingestion script:
-
-```bash
-signal-cli --username +15555555555 listGroups
-```
-
-### Dockerised Signal service runners
-
-If you prefer to keep the Signal ingestion scripts in dedicated containers,
-use the provided `docker-compose.signal.yml` file. It builds a lightweight
-image (defined in `docker/Dockerfile.signal_service`) that ships the Flask
-application code and executes `python -m scripts.signal_service` inside the
-container.
-
-1. Copy `.env.example` to `.env` (or create `.env` manually) and define:
-
-   ```ini
-   SIGNAL_PHONE_NUMBER=+15555555555
-   SIGNAL_CLI_BIN=/usr/local/bin/signal-cli  # Optional override inside the container
-   SIGNAL_TARGET_COUNT=10                    # Stop after ingesting 10 new URLs
-   # Optional: override the runtime limit (default 2 min in SANDBOX, 180 min otherwise)
-   # SIGNAL_MAX_MINUTES=15
-   ```
-
-   The default `SIGNAL_CLI_DATA` value mounts a local `./.signal-cli` folder
-   into the container at `/root/.local/share/signal-cli`. Place the linked
-   profile there (or update the variable to point to an existing directory).
-
-   The Signal worker image now downloads the headless `signal-cli` release at
-   build time (default version `0.13.20`). Override the version with
-   `--build-arg SIGNAL_CLI_VERSION=0.13.25` when invoking `docker compose build`
-   if you need a newer release.
-
-   > The bundled binary lives only inside the container image, so it will not
-   > conflict with any `signal-cli` you have already installed on your host.
-   > You can keep the local installation (useful for registering or linking the
-   > account) or remove it; the containerised workers run with their own copy.
-
-2. Ensure the Signal profile directory contains the registration files for the
-   same phone number you configured in `SIGNAL_PHONE_NUMBER`.
-
-3. Ensure docker is running, give your user permission to talk to the daemon, and test.
-   > Ensure Docker is running with `sudo systemctl status docker`
-   > If it says inactive failed or dead run: `sudo systemctl start docker`
-   > Enable auto-start on boot `sudo systemctl enable docker`
-   > Give your user permission to talk to the daemon `sudo usermod -aG docker $USER`
-   > Refresh session `newgrp docker`
-   > Test with `docker run hello-world`
-   
-4. Start the three worker containers—one per Signal group—with:
-
+1. Set `APP_ENV=production` for strict cookies and HTTPS redirects.
+2. Provide a PostgreSQL connection string via `DATABASE_URL`.
+3. Leave `SANDBOX_DATA_MODE` unset (or explicitly `false`) so the application
+   uses PostgreSQL instead of the CSV sandbox mode for news articles.
+4. Run database migrations during each deploy. Either execute the helper:
    ```bash
-   docker compose -f docker-compose.signal.yml up --build -d
+   python -m scripts.run_db_migrations
    ```
-
-   > **Note:** Some environments still ship the legacy `docker-compose`
-   > standalone binary instead of the modern `docker compose` plugin. If you
-   > see an error such as `unknown shorthand flag: 'f' in -f`, rerun the command
-   > replacing `docker compose` with `docker-compose`.
-
-5. Inspect the container logs to verify URL ingestion. Stop the workers with
-   `docker compose -f docker-compose.signal.yml down`
-   (or `docker-compose ... down`) when needed.
-
-   Each worker stops automatically after discovering `SIGNAL_TARGET_COUNT`
-   new URLs (default `10`) or once it has been running for the mode-specific
-   runtime limit (2 minutes with `SANDBOX_DATA_MODE=true`, 180 minutes
-   otherwise). Increase or decrease the URL threshold or provide
-   `SIGNAL_MAX_MINUTES` to override the runtime cap before launching the
-   stack.
-
-6. Verify signal workers 
-   > List the containers that started `docker compose -f docker-compose.signal.yml ps`
-   > Tail the logs to confirm activity `docker compose -f docker-compose.signal.yml logs -f signal_master_trainer`
-   > Bring the stack down when finished `docker compose -f docker-compose.signal.yml down`
-
-   **Note:**
-   > Other useful commands: 
-   > Build by name: `docker compose -f docker-compose.signal.yml up --build signal_master_trainer`
-   > Run once in foreground and remove the container afterward (useful for testing): 
-   `docker compose -f docker-compose.signal.yml run --rm signal_master_trainer`
-
-
-### Render Cron setup
-
-1. Deploy `signal-cli` in a background worker (e.g. Docker) and authenticate it
-   with the Signal account that has access to the target group.
-2. Add the environment variables described above to the worker service.
-3. Configure a Render Cron job to execute `python -m scripts.pull_signal_news`
-   on a schedule that suits your cadence (for example every 15 minutes).
-4. Monitor the worker logs to confirm the ingestion count after each run.
-
-The ingestion script reuses the existing metadata scraper in
-`drone_team.services.news` so the UAS News cards continue to display the
-OpenGraph titles, summaries, and thumbnails when available.
+   or call the underlying Flask-Migrate command:
+   ```bash
+   flask --app wsgi db upgrade
+   ```
+   Render supports [release commands](https://render.com/docs/deploys#release-phase);
+   configure one of the commands above so schema changes (such as adding the
+   `news_articles.open_count` column) are applied before the web service starts.
