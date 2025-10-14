@@ -21,22 +21,19 @@
   
       form.addEventListener("submit", function (event) {
         event.preventDefault();
-  
+
         if (!sessionUrl) {
           setStatus(status, "Velocidrone integration is not configured.", "error");
           return;
         }
-  
-        var callsignInput = form.querySelector("input[name='callsign']");
-        var callsign = callsignInput ? callsignInput.value.trim() : "";
+
+        var callsignAttr = form.getAttribute("data-callsign") || "";
+        var callsign = callsignAttr.trim();
         if (!callsign) {
-          setStatus(status, "Enter your Velocidrone callsign to continue.", "error");
-          if (callsignInput) {
-            callsignInput.focus();
-          }
+          setStatus(status, "Velocidrone callsign not found. Submit an application first.", "error");
           return;
         }
-  
+
         setStatus(status, "Requesting secure login…", "pending");
         if (submit) {
           submit.disabled = true;
