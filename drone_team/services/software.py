@@ -1,8 +1,6 @@
 # drone_team/services/software.py
 from pathlib import Path
-from datetime import datetime
 import csv
-import uuid
 from typing import List, Dict, Any  # <-- add this
 
 CAD_HEADERS = [

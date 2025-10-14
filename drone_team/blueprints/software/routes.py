@@ -6,7 +6,6 @@ from sqlalchemy import inspect
 from drone_team.extensions import db
 from drone_team.models import SoftwareFile
 from . import software_bp
-from functools import wraps 
 from drone_team.authz import admin_required 
 from drone_team.services import software as svc 
 

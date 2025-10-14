@@ -7,6 +7,12 @@ US Army Drone Team Page
 The US Army Drone Team drives unmanned aerial systems (UAS) innovation to ensure technological and operational dominance in modern warfare through national and international competitions. By recruiting and training the next generation of drone operators, the Army Drone Team advances tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. 
 Apply Now Option leads to another page where the user can apply to the US Army Drone Team with a standard application form. After inputing applicant details the user will be emailed a confirmation with details to access the Velocidrone Racetrack.
 
+## Collaboration workflow
+
+Active feature development now happens on the `velocidrone` branch. Create pull
+requests against that branch instead of `development` so review environments and
+deploy previews mirror the latest secure Velocidrone login work.
+
 ## Local data sandboxing
 
 Set `SANDBOX_DATA_MODE=true` in your environment while debugging or running automated tests to ensure the production

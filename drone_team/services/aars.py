@@ -2,6 +2,7 @@
 from pathlib import Path
 import pandas as pd, uuid, datetime as dt, re, csv, os
 from werkzeug.utils import secure_filename
+from collections import defaultdict
 
 AAR_COLUMNS = ["id","created_at","username","unit","drones","training_date","tags","report","summary","attachment"]
 ALLOWED_EXT = {"pdf","txt","docx","png","jpg","jpeg"}
@@ -129,10 +130,6 @@ def normalize_aar_csv_formats(app):
     df["training_date"] = td.dt.strftime("%Y-%m-%d")
     df.to_csv(p, index=False)
 
-# --- ADD BELOW YOUR EXISTING IMPORTS ---
-import csv, os, datetime
-from collections import defaultdict
-
 def _data_dir(app):
     # Reuse your DATA_DIR if you have it, else put under instance/data
     base = app.config.get("DATA_DIR") or os.path.join(app.instance_path, "data")
@@ -180,7 +177,7 @@ def record_vote(app, aar_id, username: str, value: int):
                     continue
                 else:
                     row["value"] = str(int(value))
-                    row["created_at"] = datetime.datetime.utcnow().isoformat()
+                    row["created_at"] = dt.datetime.utcnow().isoformat()
             rows.append(row)
     # If not found and adding, append
     if not found and value != 0:
@@ -188,7 +185,7 @@ def record_vote(app, aar_id, username: str, value: int):
             "aar_id": str(aar_id),
             "username": username,
             "value": str(int(value)),
-            "created_at": datetime.datetime.utcnow().isoformat()
+            "created_at": dt.datetime.utcnow().isoformat()
         })
     # Write back
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -230,7 +227,7 @@ def add_comment(app, aar_id, username: str, body: str):
     path = _ensure_comments_csv(app)
     with open(path, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow([str(aar_id), username, body, datetime.datetime.utcnow().isoformat()])
+        w.writerow([str(aar_id), username, body, dt.datetime.utcnow().isoformat()])
 
 def get_comments(app, aar_ids):
     """Return {aar_id: [ {user, body, created_at}, ... ]}, oldest->newest."""

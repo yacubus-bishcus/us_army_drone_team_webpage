@@ -1,16 +1,19 @@
 #/drone_team/blueprints/team/routes.py
-import uuid
+import uuid, os, threading
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
 from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
+
 from . import team_bp
 from ...services import team as svc
-from ...services import sheets as sheets_svc 
-from drone_team import mailer 
-from ...db import insert_team_application 
-import threading
-import os 
+from ...services import sheets as sheets_svc
+from drone_team import mailer
+from ...db import insert_team_application, get_latest_team_application_by_username
+from ...services import velocidrone
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 
@@ -28,6 +31,35 @@ def _async_send_sendgrid(app, to, subject, body):
             app.logger.error("SendGrid mail failed (returned False).")
 
 # --- LANDING PAGE ("/") ---
+_PASSCODE_RELEASE = datetime(2025, 10, 15, 9, 0, tzinfo=ZoneInfo("America/New_York"))
+
+
+def _is_passcode_released(now: datetime | None = None) -> bool:
+    tz = ZoneInfo("America/New_York")
+    current = now.astimezone(tz) if now else datetime.now(tz)
+    return current >= _PASSCODE_RELEASE
+
+
+def _get_user_callsign(app, user) -> str:
+    if not getattr(user, "is_authenticated", False):
+        return ""
+
+    username = getattr(user, "username", "")
+    if not username:
+        return ""
+
+    try:
+        row = get_latest_team_application_by_username(app, username)
+    except Exception as exc:
+        app.logger.exception("Failed to load team application for %s: %s", username, exc)
+        return ""
+
+    if not row:
+        return ""
+
+    return (row.get("callsign") or "").strip()
+
+
 @team_bp.route("/", methods=["GET"])
 @login_required
 def index():
@@ -55,6 +87,16 @@ def index():
     cal_id = current_app.config.get("GOOGLE_CALENDAR_ID", "").strip()
     tz = current_app.config.get("TIMEZONE", "America/New_York").strip()
 
+    user_callsign = _get_user_callsign(current_app, current_user)
+
+    passcode_released = _is_passcode_released()
+    velocidrone_passcode = ""
+    if passcode_released:
+        try:
+            velocidrone_passcode = velocidrone.get_passcode(current_app)
+        except velocidrone.VelocidroneConfigError as exc:
+            current_app.logger.error("Velocidrone passcode unavailable: %s", exc)
+
     return render_template(
         "team_index.html",
         summary=summary,
@@ -62,8 +104,12 @@ def index():
         operators=operators,
         cal_id=cal_id,
         tz=tz,
+        user_callsign=user_callsign,
+        passcode_released=passcode_released,
+        velocidrone_passcode=velocidrone_passcode,
     )
 
+    
 # --- FULL CALENDAR PAGE ---
 @team_bp.route("/calendar", methods=["GET"])
 @login_required

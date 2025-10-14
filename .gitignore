@@ -4,7 +4,6 @@ data/aar.csv
 data/uas_data.csv 
 data/aar_files/
 drone_venv/
-drone_team/__pycache__
 data/data/drone_team_apps.csv
 skynet.db
 scripts/army_drone_team_qr.png
@@ -13,7 +12,5 @@ us_army_drone_team_webpage.code-workspace
 /bin/
 signal_log.log
 data/data/news_articles.csv
-static/logs/news_log.log
-static/logs/news_log_master_trainer.log
-static/logs/news_log_counter_uxv.log
-static/logs/news_log_suas.log 
+*__pycache__
+*.log

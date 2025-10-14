@@ -1,7 +1,7 @@
 # drone_team/blueprints/search/routes.py
-from flask import Blueprint, render_template, request, url_for, Response, current_app
+from flask import render_template, request, url_for, Response, current_app
 from flask_login import login_required
-import io, math, pandas as pd
+import io, math
 from ...services.uas import COLUMNS, apply_basic_filters, apply_advanced_query, load_uas
 from . import search_bp
 

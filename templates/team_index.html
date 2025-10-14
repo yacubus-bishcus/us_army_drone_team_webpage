@@ -1,7 +1,148 @@
 {% extends "base.html" %}
 {% block title %}US Army Drone Team – drone_team{% endblock %}
+{% block body_attrs %} class="team-page"{% endblock %}
 {% block content %}
 <style>
+  body.team-page{
+    position: relative;
+    min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(1400px 900px at -10% 20%, rgba(56, 189, 248, 0.18), transparent 62%),
+      radial-gradient(1200px 720px at 110% 80%, rgba(34, 197, 94, 0.16), transparent 58%),
+      linear-gradient(145deg, #020617 0%, #0b1220 45%, #111827 100%);
+    color: #e2e8f0;
+    overflow-x: hidden;
+  }
+
+  body.team-page::before,
+  body.team-page::after{
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  body.team-page::before{
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 120px 120px;
+    opacity: .45;
+  }
+
+  body.team-page::after{
+    background:
+      radial-gradient(circle at 18% 22%, rgba(148, 163, 184, 0.28), transparent 55%),
+      radial-gradient(circle at 82% 76%, rgba(30, 64, 175, 0.22), transparent 60%);
+    mix-blend-mode: screen;
+    opacity: .35;
+  }
+
+  body.team-page .site-main{
+    position: relative;
+    max-width: none;
+    width: 100%;
+    padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(3rem, 6vw, 5rem);
+  }
+
+  body.team-page .container{
+    width: min(1680px, 92%);
+    margin: 0 auto;
+  }
+
+  body.team-page h1,
+  body.team-page h2,
+  body.team-page h3{
+    color: #f8fafc;
+  }
+
+  body.team-page p,
+  body.team-page li,
+  body.team-page .meta{
+    color: rgba(226, 232, 240, 0.88);
+  }
+
+  body.team-page strong{
+    color: #f8fafc;
+  }
+
+  body.team-page a{
+    color: #38bdf8;
+    transition: color .2s ease;
+  }
+
+  body.team-page a:hover{
+    color: #7dd3fc;
+  }
+
+  body.team-page .card{
+    background: rgba(15, 23, 42, 0.76);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 16px;
+    box-shadow: 0 28px 44px -28px rgba(8, 47, 73, 0.75);
+    backdrop-filter: blur(12px);
+  }
+
+  body.team-page .hero{
+    gap: 1rem;
+  }
+
+  body.team-page .hero h1{
+    font-size: clamp(2.25rem, 3vw + 1.2rem, 3rem);
+    letter-spacing: .01em;
+  }
+
+  body.team-page .actions .btn{
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+  }
+
+  body.team-page .actions .btn:not(.btn--primary){
+    background: rgba(15, 23, 42, 0.55);
+  }
+
+  body.team-page .btn--primary{
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 16px 32px -18px rgba(16, 185, 129, 0.65);
+  }
+
+  body.team-page .btn--primary:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 20px 34px -20px rgba(16, 185, 129, 0.8);
+  }
+
+  body.team-page .btn--ghost{
+    background: transparent;
+    color: #cbd5f5;
+  }
+
+  body.team-page .btn--ghost:hover{
+    background: rgba(148, 163, 184, 0.12);
+  }
+
+  body.team-page .three-col{
+    gap: 1.5rem;
+  }
+
+  body.team-page .org .tier{
+    background: rgba(15, 23, 42, 0.68);
+    border-color: rgba(148, 163, 184, 0.28);
+  }
+
+  body.team-page .chip{
+    background: rgba(30, 41, 59, 0.72);
+    border-color: rgba(148, 163, 184, 0.38);
+    color: #f1f5f9;
+  }
+
+  body.team-page .media-stack .video{
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 22px 38px -24px rgba(15, 23, 42, 0.8);
+    background: rgba(2, 6, 23, 0.92);
+  }
+
   :root{
     --nav-height: 56px;     /* adjust if your top nav height differs */
     --sticky-gap: 12px;     /* space under the nav before sticky panels start */
@@ -184,6 +325,14 @@
               <p class="meta">Calendar not configured.</p>
             {% endif %}
           </section>
+          <section class="card">
+            <h2 style="margin-top:0">Velocidrone Instructions</h2>
+            <p style="margin-bottom:0">
+              <a href="{{ url_for('static', filename='docs/velocidrone_instructions.pdf') }}" target="_blank" rel="noopener">
+                Download the Velocidrone racetrack instructions (PDF)
+              </a>
+            </p>
+          </section>
         </div>
       
       <!-- CENTER: Video above Flyer -->
@@ -233,6 +382,38 @@
       
         <!-- RIGHT: Team Structure & Roster -->
         <div class="col-right">
+          <section class="card">
+            <h2 style="margin-top:0">Velocidrone Secure Access</h2>
+            <p class="meta" style="margin:.5rem 0 1rem 0;">
+              {% if user_callsign %}
+                Do not share the Velocidrone Passcode with anyone. Access to the track is reserved for Army Service Members only.
+              {% else %}
+                You must first apply with your callsign in order to access the Velocidrone track.
+              {% endif %}
+            </p>
+            {% if user_callsign %}
+              <div style="display:flex;flex-direction:column;gap:.5rem;">
+                <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
+                <strong>{{ user_callsign }}</strong>
+              </div>
+              <div class="actions" style="margin-top:1rem;">
+                {% if passcode_released %}
+                  {% if velocidrone_passcode %}
+                    <p class="meta" style="margin:0;">Velocidrone competition passcode:</p>
+                    <strong>{{ velocidrone_passcode }}</strong>
+                  {% else %}
+                    <p class="meta" style="margin:0;">Velocidrone passcode is currently unavailable. Please contact the team administrator.</p>
+                  {% endif %}
+                {% else %}
+                  <p class="meta" style="margin:0;">The passcode will be distributed NET 0900 EST 15 October 2025.</p>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="actions" style="margin-top:1rem;">
+                <a class="btn btn--primary" href="{{ url_for('team.apply') }}">Apply Now</a>
+              </div>
+            {% endif %}
+          </section>
           <section class="card">
             <h2 style="margin-top:0">Newsletters</h2>
             <p class="meta" style="margin:.5rem 0 1rem 0">Stay up to date with the latest US Army Drone Team articles and announcements.</p>
