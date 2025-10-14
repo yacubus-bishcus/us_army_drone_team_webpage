@@ -237,31 +237,33 @@
             <h2 style="margin-top:0">Velocidrone Secure Access</h2>
             <p class="meta" style="margin:.5rem 0 1rem 0;">
               {% if user_callsign %}
-                Request a one-time login command without exposing the competition passcode.
+                Retrieve the Velocidrone competition passcode once it has been released.
               {% else %}
-                you must first apply with your callsign in order to access the Velocidrone track.
+                You must first apply with your callsign in order to access the Velocidrone track.
               {% endif %}
             </p>
             {% if user_callsign %}
-              <form
-                id="velocidrone-request-form"
-                data-session-url="{{ velocidrone_login_url or '' }}"
-                data-callsign="{{ user_callsign }}"
-              >
-                <div style="display:flex;flex-direction:column;gap:.5rem;">
-                  <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
-                  <strong>{{ user_callsign }}</strong>
-                </div>
-                <div class="actions" style="margin-top:1rem;">
-                  <button class="btn" type="submit">Request Secure Login</button>
-                </div>
-              </form>
+              <div style="display:flex;flex-direction:column;gap:.5rem;">
+                <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
+                <strong>{{ user_callsign }}</strong>
+              </div>
+              <div class="actions" style="margin-top:1rem;">
+                {% if passcode_released %}
+                  {% if velocidrone_passcode %}
+                    <p class="meta" style="margin:0;">Velocidrone competition passcode:</p>
+                    <strong>{{ velocidrone_passcode }}</strong>
+                  {% else %}
+                    <p class="meta" style="margin:0;">Velocidrone passcode is currently unavailable. Please contact the team administrator.</p>
+                  {% endif %}
+                {% else %}
+                  <p class="meta" style="margin:0;">The passcode will be distributed NET 0900 EST 15 October 2025.</p>
+                {% endif %}
+              </div>
             {% else %}
               <div class="actions" style="margin-top:1rem;">
                 <a class="btn btn--primary" href="{{ url_for('team.apply') }}">Apply Now</a>
               </div>
             {% endif %}
-            <p class="meta" id="velocidrone-status" role="status" aria-live="polite" style="margin-top:1rem;"></p>
           </section>
           <section class="card">
             <h2 style="margin-top:0">Newsletters</h2>
