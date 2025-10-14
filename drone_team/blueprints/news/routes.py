@@ -2,7 +2,7 @@
 import os
 from datetime import datetime
 from flask import render_template, request, jsonify, current_app, flash, redirect, url_for, abort
-from flask_login import login_required, current_user 
+from flask_login import current_user
 from drone_team.services import news as news_svc 
 from drone_team.authz import admin_required
 from werkzeug.utils import secure_filename
@@ -13,21 +13,16 @@ from sqlalchemy import inspect
 
 # GET page
 @news_bp.route("/", methods=["GET"])
-@login_required 
 def uas_news():
     # Example cards; replace with your real feed later
-    signal_groups = {
-        "Master-Trainer/UAS/C-UAS": "Master-Trainer / UAS / C-UAS",
-        "IrregularChat: Counter UxV": "IrregularChat · Counter UxV",
-        "IrregularChat: sUAS": "IrregularChat · sUAS",
-    }
-
-    sections = {key: [] for key in signal_groups}
-    other_items = []
-
     csv_articles = news_svc.list_articles(current_app)  # newest first
 
     def _transform(article):
+        open_count = article.get("open_count")
+        try:
+            open_count = int(open_count)
+        except (TypeError, ValueError):
+            open_count = 0
         return {
             "id": article["id"],
             "source": "csv",
@@ -36,33 +31,11 @@ def uas_news():
             "image": article["image_url"] or url_for("static", filename="img/news_fallback.jpg"),
             "link": article["url"],
             "group": article.get("added_by", ""),
+            "open_count": open_count,
         }
 
-    for article in csv_articles:
-        item = _transform(article)
-        key = (article.get("added_by") or "").strip()
-        if key in sections:
-            sections[key].append(item)
-        else:
-            other_items.append(item)
-
-    news_sections = [
-        {
-            "key": key,
-            "title": title,
-            "items": sections[key],
-        }
-        for key, title in signal_groups.items()
-    ]
-
-    if other_items:
-        news_sections.append({
-            "key": "other",
-            "title": "Other News Sources",
-            "items": other_items,
-        })
-
-    has_articles = any(section["items"] for section in news_sections)
+    articles = [_transform(article) for article in csv_articles]
+    has_articles = bool(articles)
     # WHITE PAPERS 
     insp = inspect(db.engine)
     if insp.has_table("white_papers"):
@@ -74,11 +47,19 @@ def uas_news():
 
     return render_template(
         "uas_news.html",
-        news_sections=news_sections,
+        articles=articles,
         has_articles=has_articles,
         years=years,
         tags=tags,
     )
+
+
+@news_bp.route("/open/<article_id>", methods=["GET"])
+def open_article(article_id):
+    article = news_svc.increment_open_count(current_app, article_id)
+    if not article:
+        abort(404)
+    return redirect(article["url"])
 
 # admin-only endpoint to add by URL
 @news_bp.route("/admin/articles/url", methods=["POST"])
