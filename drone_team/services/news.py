@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from drone_team.extensions import db
 from drone_team.models import NewsArticle
@@ -58,6 +58,25 @@ def articles_csv(app) -> Path:
             writer.writerows(updated_rows)
     return p
 
+def _row_to_article_dict(row, *, open_count: int = 0) -> Dict[str, Any]:
+    """Convert a SQL row (from a raw SELECT) into the article dict shape."""
+    added_at = getattr(row, "added_at", None)
+    if hasattr(added_at, "isoformat"):
+        added_at_value = added_at.isoformat(timespec="seconds")
+    else:
+        added_at_value = added_at or ""
+    return {
+        "id": getattr(row, "id", None),
+        "url": getattr(row, "url", ""),
+        "title": getattr(row, "title", ""),
+        "summary": getattr(row, "summary", "") or "",
+        "image_url": getattr(row, "image_url", "") or "",
+        "added_by": getattr(row, "added_by", "") or "",
+        "added_at": added_at_value,
+        "open_count": open_count,
+    }
+
+
 def list_articles(app) -> List[Dict[str, Any]]:
     if _use_csv(app):
         p = articles_csv(app)
@@ -76,6 +95,22 @@ def list_articles(app) -> List[Dict[str, Any]]:
     if not inspector.has_table(NewsArticle.__tablename__):
         app.logger.warning("news_articles table missing; returning empty list")
         return []
+
+    columns = {col["name"] for col in inspector.get_columns(NewsArticle.__tablename__)}
+    if "open_count" not in columns:
+        app.logger.error(
+            "news_articles.open_count column missing; defaulting counts to 0 until migrations run"
+        )
+        result = db.session.execute(
+            text(
+                """
+                SELECT id, url, title, summary, image_url, added_by, added_at
+                FROM news_articles
+                ORDER BY added_at DESC
+                """
+            )
+        )
+        return [_row_to_article_dict(row, open_count=0) for row in result]
 
     rows: List[Dict[str, Any]] = []
     for article in NewsArticle.query.order_by(NewsArticle.added_at.desc()).all():
@@ -151,6 +186,12 @@ def add_article_by_url(app, url: str, added_by: str) -> Dict[str, Any]:
     if not inspector.has_table(NewsArticle.__tablename__):
         raise RuntimeError("news_articles table missing; run database migrations")
 
+    columns = {col["name"] for col in inspector.get_columns(NewsArticle.__tablename__)}
+    if "open_count" not in columns:
+        raise RuntimeError(
+            "news_articles.open_count column missing; run migrations to enable adding articles"
+        )
+
     article = NewsArticle(
         id=row["id"],
         url=row["url"],
@@ -190,6 +231,17 @@ def delete_article(app, article_id: str) -> bool:
     if not inspector.has_table(NewsArticle.__tablename__):
         return False
 
+    columns = {col["name"] for col in inspector.get_columns(NewsArticle.__tablename__)}
+    if "open_count" not in columns:
+        result = db.session.execute(
+            text(
+                "DELETE FROM news_articles WHERE id = :article_id"
+            ),
+            {"article_id": article_id},
+        )
+        db.session.commit()
+        return result.rowcount > 0
+
     article = NewsArticle.query.filter_by(id=article_id).first()
     if not article:
         return False
@@ -228,6 +280,22 @@ def get_article(app, article_id: str) -> Optional[Dict[str, Any]]:
     inspector = inspect(db.engine)
     if not inspector.has_table(NewsArticle.__tablename__):
         return None
+    columns = {col["name"] for col in inspector.get_columns(NewsArticle.__tablename__)}
+    if "open_count" not in columns:
+        row = db.session.execute(
+            text(
+                """
+                SELECT id, url, title, summary, image_url, added_by, added_at
+                FROM news_articles
+                WHERE id = :article_id
+                """
+            ),
+            {"article_id": article_id},
+        ).fetchone()
+        if not row:
+            return None
+        return _row_to_article_dict(row, open_count=0)
+
     article = NewsArticle.query.filter_by(id=article_id).first()
     if not article:
         return None
@@ -263,6 +331,25 @@ def increment_open_count(app, article_id: str) -> Optional[Dict[str, Any]]:
     inspector = inspect(db.engine)
     if not inspector.has_table(NewsArticle.__tablename__):
         return None
+    columns = {col["name"] for col in inspector.get_columns(NewsArticle.__tablename__)}
+    if "open_count" not in columns:
+        app.logger.error(
+            "news_articles.open_count column missing; cannot increment counter until migrations run"
+        )
+        row = db.session.execute(
+            text(
+                """
+                SELECT id, url, title, summary, image_url, added_by, added_at
+                FROM news_articles
+                WHERE id = :article_id
+                """
+            ),
+            {"article_id": article_id},
+        ).fetchone()
+        if not row:
+            return None
+        return _row_to_article_dict(row, open_count=0)
+
     article = NewsArticle.query.filter_by(id=article_id).first()
     if not article:
         return None
