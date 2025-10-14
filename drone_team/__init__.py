@@ -124,6 +124,7 @@ def create_app():
             "team.calendar",
             "profile.view",
             "auth.logout_page",
+            "compare.compare",
         }
         if ep not in public_endpoints:
             if not getattr(current_user, "is_authenticated", False):
