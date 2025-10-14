@@ -344,7 +344,10 @@
     {% else %}
     <div class="card" role="note">
       <p style="margin:0;">
-        Need to update the specifications? Please contact an administrator to request data changes.
+        <a href="{{ url_for('profile.view') }}" style="color:inherit; text-decoration:underline;">
+          Need to update the specifications?
+        </a>
+        Please contact an administrator to request data changes.
       </p>
     </div>
     {% endif %}
