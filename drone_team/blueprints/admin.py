@@ -95,11 +95,19 @@ def deny_user(token):
         f"[drone_team DB] Denied: {username}",
         f"User '{username}' denied."
     )
+    user_denied_body = [f"[drone_team DB] Denied: {username}"]
+    if email and email.lower().endswith(".civ@army.mil"):
+        user_denied_body.extend(
+            [
+                "",
+                "Your request was denied because the US Army Drone Team Webpage is accessible by US Army Soldiers only.",
+            ]
+        )
     send_email(
         current_app,
         email,
         f"[drone_team DB] Denied: {username}",
-        f"[drone_team DB] Denied: {username}"
+        "\n".join(user_denied_body)
     )
     if sponsor_email:
         send_email(
