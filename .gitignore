@@ -14,3 +14,4 @@ signal_log.log
 data/data/news_articles.csv
 *__pycache__
 *.log
+.vscode

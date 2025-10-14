@@ -13,7 +13,6 @@ from ...services import team as svc
 from ...services import sheets as sheets_svc
 from drone_team import mailer
 from ...db import insert_team_application, get_latest_team_application_by_username
-from ...services import velocidrone
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 
@@ -93,9 +92,9 @@ def index():
     velocidrone_passcode = ""
     if passcode_released:
         try:
-            velocidrone_passcode = velocidrone.get_passcode(current_app)
-        except velocidrone.VelocidroneConfigError as exc:
-            current_app.logger.error("Velocidrone passcode unavailable: %s", exc)
+            velocidrone_passcode = os.environ.get('VELOCIDRONE_PASSCODE', "PASSCODE Unavailable")
+        except:
+            current_app.logger.error("Velocidrone passcode unavailable.")
 
     return render_template(
         "team_index.html",
