@@ -8,7 +8,7 @@ from . import team_bp
 from ...services import team as svc
 from ...services import sheets as sheets_svc 
 from drone_team import mailer 
-from ...db import insert_team_application 
+from ...db import insert_team_application, get_latest_team_application_by_username
 from ...services import velocidrone
 
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
@@ -27,6 +27,26 @@ def _async_send_sendgrid(app, to, subject, body):
             app.logger.error("SendGrid mail failed (returned False).")
 
 # --- LANDING PAGE ("/") ---
+def _get_user_callsign(app, user) -> str:
+    if not getattr(user, "is_authenticated", False):
+        return ""
+
+    username = getattr(user, "username", "")
+    if not username:
+        return ""
+
+    try:
+        row = get_latest_team_application_by_username(app, username)
+    except Exception as exc:
+        app.logger.exception("Failed to load team application for %s: %s", username, exc)
+        return ""
+
+    if not row:
+        return ""
+
+    return (row.get("callsign") or "").strip()
+
+
 @team_bp.route("/", methods=["GET"])
 @login_required
 def index():
@@ -54,6 +74,8 @@ def index():
     cal_id = current_app.config.get("GOOGLE_CALENDAR_ID", "").strip()
     tz = current_app.config.get("TIMEZONE", "America/New_York").strip()
 
+    user_callsign = _get_user_callsign(current_app, current_user)
+
     return render_template(
         "team_index.html",
         summary=summary,
@@ -62,15 +84,19 @@ def index():
         cal_id=cal_id,
         tz=tz,
         velocidrone_login_url=url_for("team.request_velocidrone_session"),
+        user_callsign=user_callsign,
     )
 
 @team_bp.post("/velocidrone/session", endpoint="request_velocidrone_session")
 @login_required
 def request_velocidrone_session():
     payload = request.get_json(silent=True) or {}
-    callsign = (payload.get("callsign") or "").strip()
+    callsign = _get_user_callsign(current_app, current_user)
     if not callsign:
-        return jsonify({"error": "Callsign is required."}), 400
+        callsign = (payload.get("callsign") or "").strip()
+
+    if not callsign:
+        return jsonify({"error": "Velocidrone callsign not found. Submit an application first."}), 400
 
     try:
         # Ensure integration is configured before creating a session token

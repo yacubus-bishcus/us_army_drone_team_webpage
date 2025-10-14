@@ -272,6 +272,33 @@ def insert_team_application(app, data: dict) -> int:
 # --------------------
 # Query helpers
 # --------------------
+def get_latest_team_application_by_username(app, username: str) -> dict | None:
+    """Return the most recent team application for the given username."""
+
+    if not username:
+        return None
+
+    engine = get_engine(app)
+    sql = text(
+        """
+        SELECT
+            app_id, username, name, grade, unit, callsign, email, phone,
+            years_experience, primary_platforms, skills,
+            deploying_12mo, parental_leave_12mo, tdy_restrictions, statement,
+            video_path, status, created_at
+        FROM team_applications
+        WHERE username = :username
+        ORDER BY created_at DESC
+        LIMIT 1
+        """
+    )
+
+    with engine.connect() as con:
+        row = con.execute(sql, {"username": username}).mappings().first()
+
+    return dict(row) if row else None
+
+
 def _row_to_user(row) -> User | None:
     if row is None:
         return None
