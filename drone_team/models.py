@@ -13,6 +13,7 @@ class NewsArticle(db.Model):
     image_url = db.Column(db.String(1024))
     added_by = db.Column(db.String(128), nullable=False, index=True)
     added_at = db.Column(db.DateTime, nullable=False, index=True)
+    open_count = db.Column(db.Integer, nullable=False, default=0)
 
 
 class WhitePaper(db.Model):

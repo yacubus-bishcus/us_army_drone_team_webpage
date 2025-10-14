@@ -3,14 +3,23 @@ from pathlib import Path
 import csv, re, requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from sqlalchemy import inspect
 
 from drone_team.extensions import db
 from drone_team.models import NewsArticle
 
-HEADERS = ["id","url","title","summary","image_url","added_by","added_at"]
+HEADERS = [
+    "id",
+    "url",
+    "title",
+    "summary",
+    "image_url",
+    "added_by",
+    "added_at",
+    "open_count",
+]
 
 
 def _use_csv(app) -> bool:
@@ -27,6 +36,26 @@ def articles_csv(app) -> Path:
     if not p.exists():
         with p.open("w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(HEADERS)
+        return p
+
+    with p.open("r", newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+
+    if rows and "open_count" not in rows[0]:
+        header = rows[0] + ["open_count"]
+        updated_rows = []
+        for row in rows[1:]:
+            diff = len(header) - len(row)
+            if diff > 0:
+                row = row + ["0"] * diff
+            else:
+                row = row[:len(header)]
+            updated_rows.append(row)
+        with p.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            writer.writerows(updated_rows)
     return p
 
 def list_articles(app) -> List[Dict[str, Any]]:
@@ -36,6 +65,8 @@ def list_articles(app) -> List[Dict[str, Any]]:
         with p.open("r", newline="", encoding="utf-8") as f:
             r = csv.DictReader(f)
             for row in r:
+                if "open_count" not in row or row["open_count"] is None:
+                    row["open_count"] = "0"
                 out.append(row)
         # newest first
         out.sort(key=lambda x: x.get("added_at", ""), reverse=True)
@@ -107,6 +138,7 @@ def add_article_by_url(app, url: str, added_by: str) -> Dict[str, Any]:
         "image_url": meta["image_url"],
         "added_by": added_by or "admin",
         "added_at": now.isoformat(timespec="seconds"),
+        "open_count": 0,
     }
     if _use_csv(app):
         p = articles_csv(app)
@@ -127,6 +159,7 @@ def add_article_by_url(app, url: str, added_by: str) -> Dict[str, Any]:
         image_url=row["image_url"],
         added_by=row["added_by"],
         added_at=now,
+        open_count=row["open_count"],
     )
     db.session.add(article)
     db.session.commit()
@@ -174,4 +207,67 @@ def _serialize_article(article: NewsArticle) -> Dict[str, Any]:
         "image_url": article.image_url or "",
         "added_by": article.added_by or "",
         "added_at": article.added_at.isoformat(timespec="seconds") if article.added_at else "",
+        "open_count": article.open_count if getattr(article, "open_count", None) is not None else 0,
     }
+
+
+def get_article(app, article_id: str) -> Optional[Dict[str, Any]]:
+    """Return a single article by id."""
+    if _use_csv(app):
+        p = articles_csv(app)
+        with p.open("r", newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            for row in r:
+                if row.get("id") == article_id:
+                    if "open_count" not in row or row["open_count"] is None:
+                        row["open_count"] = "0"
+                    row["open_count"] = int(row["open_count"] or 0)
+                    return row
+        return None
+
+    inspector = inspect(db.engine)
+    if not inspector.has_table(NewsArticle.__tablename__):
+        return None
+    article = NewsArticle.query.filter_by(id=article_id).first()
+    if not article:
+        return None
+    return _serialize_article(article)
+
+
+def increment_open_count(app, article_id: str) -> Optional[Dict[str, Any]]:
+    """Increment the open counter for an article and return the updated row."""
+    if _use_csv(app):
+        p = articles_csv(app)
+        rows: List[Dict[str, Any]] = []
+        target: Optional[Dict[str, Any]] = None
+        with p.open("r", newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            for row in r:
+                if "open_count" not in row or row["open_count"] is None:
+                    row["open_count"] = "0"
+                if row.get("id") == article_id:
+                    count = int(row.get("open_count") or 0) + 1
+                    row["open_count"] = str(count)
+                    target = row.copy()
+                rows.append(row)
+        if target is None:
+            return None
+        with p.open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=HEADERS)
+            w.writeheader()
+            for row in rows:
+                w.writerow(row)
+        target["open_count"] = int(target["open_count"])
+        return target
+
+    inspector = inspect(db.engine)
+    if not inspector.has_table(NewsArticle.__tablename__):
+        return None
+    article = NewsArticle.query.filter_by(id=article_id).first()
+    if not article:
+        return None
+    if article.open_count is None:
+        article.open_count = 0
+    article.open_count += 1
+    db.session.commit()
+    return _serialize_article(article)
