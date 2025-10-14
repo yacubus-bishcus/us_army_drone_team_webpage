@@ -86,9 +86,6 @@ def create_csv_if_missing(app):
         pd.DataFrame(seed)[COLUMNS].to_csv(p, index=False)
 
 def load_uas(app):
-    import pandas as pd
-    from pathlib import Path
-
     p = Path(app.config.get("DATA_DIR", app.instance_path)) / "blue_list_data.csv"
     df = pd.read_csv(p)
 

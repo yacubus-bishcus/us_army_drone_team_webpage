@@ -89,8 +89,6 @@ class Config:
     
 # ========== Secret Validation ==========
 def validate_required_env():
-    """Call this AFTER load_dotenv() and app.config.from_object(Config)."""
-    require_email = os.getenv("REQUIRE_EMAIL", "0").lower() in ("1", "true", "yes")
     required = {
         "SECRET_KEY": Config.SECRET_KEY,
         "ADMIN_USERNAME": Config.ADMIN_USERNAME,

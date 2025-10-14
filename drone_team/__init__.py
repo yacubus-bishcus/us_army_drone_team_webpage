@@ -11,7 +11,7 @@ from .config import Config
 from .extensions import login_manager, db as sqla_db, migrate
 from .db import init_users_db, seed_admin_user, init_team_applications
 from .services.uas import create_csv_if_missing
-from .services.aars import create_aar_csv_if_missing
+from .services.aars import create_aar_csv_if_missing, normalize_aar_csv_formats
 from .cli import register_cli
 
 def create_app():
@@ -63,7 +63,6 @@ def create_app():
 
     # App data bootstraps
     create_csv_if_missing(app)
-    from .services.aars import create_aar_csv_if_missing, normalize_aar_csv_formats
     create_aar_csv_if_missing(app)
     normalize_aar_csv_formats(app)
 

@@ -157,7 +157,7 @@ def upload_whitepaper():
 # File download
 @news_bp.route("/download/<int:wp_id>", methods=["GET"])
 def download_whitepaper(wp_id):
-    from flask import send_from_directory, abort
+    from flask import send_from_directory
     wp = WhitePaper.query.get_or_404(wp_id)
     upload_dir = os.path.join(current_app.instance_path, "uploads", "whitepapers")
     if not os.path.exists(os.path.join(upload_dir, wp.filename)):

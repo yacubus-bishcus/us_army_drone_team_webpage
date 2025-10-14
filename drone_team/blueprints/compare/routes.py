@@ -1,5 +1,5 @@
 # drone_team/blueprints/compare/routes.py
-from flask import Blueprint, render_template, request, redirect, url_for, current_app
+from flask import render_template, request, redirect, url_for, current_app
 from flask_login import login_required
 import math
 from ...services.uas import load_uas, append_uas, delete_uas, COLUMNS
