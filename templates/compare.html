@@ -51,6 +51,7 @@
     .alert { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 8px; text-align: center; }
     .alert-success { background: var(--success-bg); border-color: var(--success-brd); }
     .alert-error { background: var(--error-bg); border-color: var(--error-brd); }
+    .alert-warning { background: #fff7e6; border-color: #f0c36d; }
 
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
     .stack { display: grid; gap: 1rem; }
@@ -139,6 +140,10 @@
       {% if error %}
         <div class="alert alert-error">{{ error }}</div>
       {% endif %}
+      <div class="alert alert-warning">
+        All specification data should be verified with the manufacturer prior to use. The creator of this webpage is not liable
+        for any erroneous data.
+      </div>
     </div>
 
     {# -------------------------- #

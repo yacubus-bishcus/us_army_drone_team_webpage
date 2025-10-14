@@ -9,7 +9,8 @@
     {% elif current_user.role != 'admin' %}
       <li><a href="{{ url_for('core.home') }}">Home</a></li>
       <li><a href="{{ url_for('team.index') }}">US Army Drone Team</a></li>
-      <li><a href="{{ url_for('team.apply') }}">Apply</a></li> 
+      <li><a href="{{ url_for('team.apply') }}">Apply</a></li>
+      <li><a href="{{ url_for('compare.compare') }}">Comparison Tool</a></li>
       <li><a href="{{ url_for('profile.view') }}">Profile</a></li>
       <li><a href="{{ url_for('auth.logout_page') }}">Logout ({{ current_user.username }})</a></li>
     {# Admin: show everything #}
