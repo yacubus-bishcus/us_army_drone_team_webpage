@@ -126,6 +126,8 @@ def create_app():
             "compare.compare",
             "news.uas_news",
             "news.open_article",
+            "news.search_whitepapers",
+            "news.download_whitepapers",
         }
         if ep not in public_endpoints:
             if not getattr(current_user, "is_authenticated", False):

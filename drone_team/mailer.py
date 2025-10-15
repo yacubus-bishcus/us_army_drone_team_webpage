@@ -68,7 +68,7 @@ def send_admin_email_sendgrid(app, subject: str, body: str, *, max_retries: int 
         current_app.logger.error("SendGrid API error: body=%s", body[:500])
     return True 
 
-def send_email(app, to, subject, body, attachments=None, cc=None, bcc=None):
+def send_email(app, to, subject, body, attachments=None, cc=None, bcc=None)->bool:
     """
     Generic sender with optional attachments.
     - to/cc/bcc: str or list[str]
@@ -96,7 +96,12 @@ def send_email(app, to, subject, body, attachments=None, cc=None, bcc=None):
         maintype, subtype = (mimetype.split("/", 1) if "/" in mimetype else ("application", "octet-stream"))
         msg.add_attachment(blob, maintype=maintype, subtype=subtype, filename=name)
 
-    _smtp_send(app, msg)
+    try:
+        _smtp_send(app, msg)
+        return True 
+    except:
+        return False 
+
 
 def send_admin_email(app, subject: str, body: str, *, max_retries: int = 2, backoff_sec: float = 1.5) -> bool:
     recipients = _admin_recipients(app)
