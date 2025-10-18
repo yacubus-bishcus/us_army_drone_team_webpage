@@ -60,22 +60,23 @@ def main() -> None:
         logging.info("[DRY RUN] Would send email to %s", user.email)
         return 
 
-    subject = "[drone_team DB] Password reset instructions"
-    body = (
-        f"Hello {user.username},\n\n"
-        "An administrator requested a password reset for your drone_team account.\n\n"
-        f"Use the link below to set a new password (expires in one hour):\n{reset_url}\n\n"
-        "If you did not expect this change, please contact support at usarmydroneteamexecutiveoffice@gmail.com"
-    )
-
     with app.app_context():
         token = create_password_reset_token(app, user.id)
         reset_url = url_for("auth.reset_password", token=token, _external=True)
+
+        subject = "[drone_team DB] Password reset instructions"
+        body = (
+            f"Hello {user.username},\n\n"
+            "An administrator requested a password reset for your drone_team account.\n\n"
+            f"Use the link below to set a new password (expires in one hour):\n{reset_url}\n\n"
+            "If you did not expect this change, please contact support at usarmydroneteamexecutiveoffice@gmail.com"
+        )
 
         try:
             success = send_email(app, user.email, subject, body)
         except Exception as exc:  # pragma: no cover - defensive logging
             logging.exception("Failed to send email to %s: %s", user.email, exc)
+            success = False
 
         if success:
             logging.info("Email sent to %s", user.email)
