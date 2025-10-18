@@ -13,11 +13,42 @@ without actually sending any email.
 """
 
 import os, logging, argparse
-from .load_user_env import load_environment 
+from typing import Optional
+from .load_user_env import load_environment
 from flask import url_for
+from sqlalchemy import text
 from drone_team import create_app
-from drone_team.db import get_user_by_username, create_password_reset_token
+from drone_team.db import (
+    create_password_reset_token,
+    get_engine,
+    get_user_by_username,
+    init_users_db,
+)
 from drone_team.mailer import send_email, send_email_sendgrid
+
+
+def fetch_user_email(app, username: str) -> Optional[str]:
+    """Return the trimmed email address for ``username`` if present."""
+
+    with app.app_context():
+        init_users_db(app)
+        engine = get_engine(app)
+        query = text(
+            """
+            SELECT email
+            FROM users
+            WHERE username = :username
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+            LIMIT 1
+            """
+        )
+        with engine.connect() as connection:
+            row = connection.execute(query, {"username": username}).fetchone()
+            if row and getattr(row, "email", None):
+                email = row.email.strip()
+                return email or None
+    return None
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -50,15 +81,18 @@ def main() -> None:
         return 
 
     app = create_app()
-    user = get_user_by_username(app, args.username)
+    email = fetch_user_email(app, args.username)
+    if not email:
+        raise LookupError("User missing or has no email on file")
 
-    if not user or not getattr(user, "email", None):
+    user = get_user_by_username(app, args.username)
+    if not user:
         raise LookupError("User missing or has no email on file")
 
     if args.dry_run:
         logging.info("Dry run enabled; no emails will be sent.")
-        logging.info("[DRY RUN] Would send email to %s", user.email)
-        return 
+        logging.info("[DRY RUN] Would send email to %s", email)
+        return
 
     with app.app_context():
         token = create_password_reset_token(app, user.id)
@@ -73,15 +107,15 @@ def main() -> None:
         )
 
         try:
-            success = send_email(app, user.email, subject, body)
+            success = send_email(app, email, subject, body)
         except Exception as exc:  # pragma: no cover - defensive logging
-            logging.exception("Failed to send email to %s: %s", user.email, exc)
+            logging.exception("Failed to send email to %s: %s", email, exc)
             success = False
 
         if success:
-            logging.info("Email sent to %s", user.email)
+            logging.info("Email sent to %s", email)
         else:
-            logging.error("Failure when sending to %s", user.email)
+            logging.error("Failure when sending to %s", email)
 
     return 
     
