@@ -15,27 +15,13 @@ without actually sending any email.
 
 from __future__ import annotations
 
-import argparse
-import logging
-import os
-from pathlib import Path
+import argparse, os, logging
 from typing import Iterable, List, Set
-
-from dotenv import load_dotenv
+from .load_user_env import load_environment
 from sqlalchemy import text
-
 from drone_team import create_app
 from drone_team.db import get_engine, init_users_db
 from drone_team.mailer import send_email
-
-
-def _load_environment() -> None:
-    """Load environment variables from the project .env file if present."""
-
-    project_root = Path(__file__).resolve().parents[1]
-    env_path = project_root / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
 
 
 def fetch_user_emails(app) -> List[str]:
@@ -91,7 +77,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-    _load_environment()
+    load_environment()
     args = parse_args()
 
     app = create_app()
