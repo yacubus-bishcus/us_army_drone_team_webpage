@@ -96,7 +96,24 @@ def main() -> None:
 
     with app.app_context():
         token = create_password_reset_token(app, user.id)
-        reset_url = url_for("auth.reset_password", token=token, _external=True)
+
+        base_url = (
+            os.getenv("PASSWORD_RESET_BASE_URL")
+            or app.config.get("PASSWORD_RESET_BASE_URL")
+            or (
+                f"{app.config.get('PREFERRED_URL_SCHEME', 'http')}://{app.config.get('SERVER_NAME')}"
+                if app.config.get("SERVER_NAME")
+                else None
+            )
+        )
+
+        if not base_url:
+            raise RuntimeError(
+                "Set PASSWORD_RESET_BASE_URL or configure SERVER_NAME to build reset URLs."
+            )
+
+        with app.test_request_context(base_url=base_url):
+            reset_url = url_for("auth.reset_password", token=token, _external=True)
 
         subject = "[drone_team DB] Password reset instructions"
         body = (
