@@ -1,5 +1,6 @@
 #drone_team/blueprints/core.py
-from flask import Blueprint, render_template, request, current_app, jsonify 
+from flask import Blueprint, render_template, request, current_app, jsonify, send_from_directory
+from pathlib import Path
 from ..db import get_user_count
 
 bp = Blueprint("core", __name__)
@@ -29,3 +30,22 @@ def home():
         message=request.args.get("message", ""),
         error=request.args.get("error", "")
     )
+
+
+@bp.route("/license")
+def license_page():
+    """Display the license notice for the project."""
+    return render_template("legal/license.html")
+
+
+@bp.route("/license/eula")
+def license_document():
+    """Serve the End User License Agreement markdown file."""
+    project_root = Path(current_app.root_path).parent
+    return send_from_directory(project_root, "LICENSE.md", mimetype="text/markdown")
+
+
+@bp.route("/disclaimer")
+def disclaimer_page():
+    """Display the project disclaimer."""
+    return render_template("legal/disclaimer.html")

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}License{% endblock %}
+{% block content %}
+<section class="legal-page">
+  <div class="container">
+    <h1>License</h1>
+    <p>
+      Use of this project is governed by a proprietary
+      <a href="{{ url_for('core.license_document') }}">End User License Agreement</a>.
+      Redistribution, modification, and other derivative use cases are prohibited without prior written consent.
+    </p>
+  </div>
+</section>
+{% endblock %}
