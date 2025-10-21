@@ -15,5 +15,5 @@ data/data/news_articles.csv
 *__pycache__
 *.log
 .vscode
-white_papers*
+*_backup*
 .~lock.*
