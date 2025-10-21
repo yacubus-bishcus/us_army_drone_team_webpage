@@ -24,7 +24,7 @@ from drone_team.db import (
     get_user_by_username,
     init_users_db,
 )
-from drone_team.mailer import send_email, send_email_sendgrid
+from drone_team.mailer import send_email
 
 
 def fetch_user_email(app, username: str) -> Optional[str]:
@@ -97,19 +97,11 @@ def main() -> None:
     with app.app_context():
         token = create_password_reset_token(app, user.id)
 
-        base_url = (
-            os.getenv("PASSWORD_RESET_BASE_URL")
-            or app.config.get("PASSWORD_RESET_BASE_URL")
-            or (
-                f"{app.config.get('PREFERRED_URL_SCHEME', 'http')}://{app.config.get('SERVER_NAME')}"
-                if app.config.get("SERVER_NAME")
-                else None
-            )
-        )
+        base_url = ("https://usarmydroneteam.onrender.com")
 
         if not base_url:
             raise RuntimeError(
-                "Set PASSWORD_RESET_BASE_URL or configure SERVER_NAME to build reset URLs."
+                "Set DATABASE_URL to build reset URLs."
             )
 
         with app.test_request_context(base_url=base_url):
@@ -118,7 +110,7 @@ def main() -> None:
         subject = "[drone_team DB] Password reset instructions"
         body = (
             f"Hello {user.username},\n\n"
-            "An administrator requested a password reset for your drone_team account.\n\n"
+            "An administrator requested a password reset for your US Army Drone Team account.\n\n"
             f"Use the link below to set a new password (expires in one hour):\n{reset_url}\n\n"
             "If you did not expect this change, please contact support at usarmydroneteamexecutiveoffice@gmail.com"
         )

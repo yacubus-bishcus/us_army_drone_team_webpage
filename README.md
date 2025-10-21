@@ -59,3 +59,16 @@ deploy previews mirror the latest secure Velocidrone login work.
    Render supports [release commands](https://render.com/docs/deploys#release-phase);
    configure one of the commands above so schema changes (such as adding the
    `news_articles.open_count` column) are applied before the web service starts.
+
+
+## License
+
+Use of this project is governed by a proprietary [End User License Agreement](LICENSE). Redistribution, modification, and other derivative use cases are prohibited without prior written consent.
+
+## Disclaimer
+
+This repository is provided for research and educational purposes only. It is
+not an official U.S. Army communication channel, endorsement, or recruitment
+platform, and it should not be interpreted as such. Content, assets, and
+demonstrations are fictionalized to support software development workflows and
+do not represent real-world commitments, capabilities, or policy statements.
