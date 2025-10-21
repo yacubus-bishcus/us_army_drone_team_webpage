@@ -1,15 +1,16 @@
 #/drone_team/blueprints/news/routes.py
-import os
 from datetime import datetime
-from flask import render_template, request, jsonify, current_app, flash, redirect, url_for, abort
+from io import BytesIO
+from flask import render_template, request, jsonify, current_app, flash, redirect, url_for, abort, send_file
 from flask_login import current_user
 from drone_team.services import news as news_svc 
 from drone_team.authz import admin_required
-from werkzeug.utils import secure_filename
 from drone_team.extensions import db
 from drone_team.models import WhitePaper
 from . import news_bp
 from sqlalchemy import inspect
+from sqlalchemy.orm import load_only
+from werkzeug.utils import secure_filename
 
 # GET page
 @news_bp.route("/", methods=["GET"])
@@ -108,8 +109,23 @@ def search_whitepapers():
     if tag:
         query = query.filter(WhitePaper.tags.ilike(f"%{tag}%"))
 
-    results = (query.order_by(WhitePaper.uploaded_at.desc())
-                    .limit(50).all())
+    results = (
+        query.options(
+            load_only(
+                WhitePaper.id,
+                WhitePaper.title,
+                WhitePaper.authors,
+                WhitePaper.year,
+                WhitePaper.tags,
+                WhitePaper.filesize,
+                WhitePaper.filename,
+                WhitePaper.uploaded_at,
+            )
+        )
+        .order_by(WhitePaper.uploaded_at.desc())
+        .limit(50)
+        .all()
+    )
 
     return jsonify([
         {
@@ -138,15 +154,25 @@ def upload_whitepaper():
         return redirect(url_for("news.uas_news"))
 
     fn = secure_filename(f.filename)
-    upload_dir = os.path.join(current_app.instance_path, "uploads", "whitepapers")
-    os.makedirs(upload_dir, exist_ok=True)
-    path = os.path.join(upload_dir, fn)
-    f.save(path)
+    if not fn:
+        fn = f"whitepaper_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
 
-    size = os.path.getsize(path)
+    blob = f.read()
+    if not blob:
+        flash("Uploaded PDF is empty.", "error")
+        return redirect(url_for("news.uas_news"))
+
+    size = len(blob)
     wp = WhitePaper(
-        title=title, authors=authors, year=year, tags=tags, abstract=abstract,
-        filename=fn, filesize=size, uploaded_at=datetime.utcnow()
+        title=title,
+        authors=authors,
+        year=year,
+        tags=tags,
+        abstract=abstract,
+        filename=fn,
+        filesize=size,
+        data=blob,
+        uploaded_at=datetime.utcnow(),
     )
     db.session.add(wp)
     db.session.commit()
@@ -157,9 +183,13 @@ def upload_whitepaper():
 # File download
 @news_bp.route("/download/<int:wp_id>", methods=["GET"])
 def download_whitepaper(wp_id):
-    from flask import send_from_directory
     wp = WhitePaper.query.get_or_404(wp_id)
-    upload_dir = os.path.join(current_app.instance_path, "uploads", "whitepapers")
-    if not os.path.exists(os.path.join(upload_dir, wp.filename)):
+    if not wp.data:
         abort(404)
-    return send_from_directory(upload_dir, wp.filename, as_attachment=True)
+
+    return send_file(
+        BytesIO(wp.data),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=wp.filename,
+    )

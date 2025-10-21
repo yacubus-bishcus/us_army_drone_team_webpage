@@ -117,6 +117,40 @@ def calendar():
     tz = current_app.config.get("TIMEZONE", "America/New_York").strip()
     return render_template("team_calendar.html", cal_id=cal_id, tz=tz)
 
+
+@team_bp.route("/faq", methods=["GET"])
+@login_required
+def faq():
+    faqs = [
+        {
+            "question": "Will joining the US Army Drone Team be A Permanent Change of Station (PCS)?",
+            "answer": (
+                "No. The US Army Drone Team does not have TDA slots. Currently all team members are "
+                'considered "At Large" members where any training and competition will be a TDY.'
+            ),
+        },
+        {
+            "question": "How many Soldiers will be selected to the US Army Drone Team? Will there be alternates?",
+            "answer": (
+                "20 Soldiers will be selected as primaries for the US Army Drone Team. There will be alternates, "
+                "but only the 20 primaries will have training funded quarterly."
+            ),
+        },
+        {
+            "question": "How often will the Drone Team meet for training and competitions?",
+            "answer": "The goal is to meet twice quarterly for training and competitions.",
+        },
+        {
+            "question": "Is selection to the Drone Team only based on Velocidrone track performance?",
+            "answer": (
+                "No. While the track performance will be heavily weighted for consideration, other factors such as "
+                "AFT score, Soldier Talent Profile, Interview answers, etc will be considered."
+            ),
+        },
+    ]
+
+    return render_template("team_faq.html", faqs=faqs)
+
 # --- APPLICATION FORM ("/apply") ---
 @team_bp.route("/apply", methods=["GET", "POST"], endpoint="apply")
 @login_required

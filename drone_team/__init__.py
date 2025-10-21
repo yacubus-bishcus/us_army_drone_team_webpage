@@ -109,18 +109,26 @@ def create_app():
             return
         public_endpoints = {
             "core.home",
+            "core.license_page",
+            "core.license_document",
+            "core.disclaimer_page",
             "auth.login_page",
             "auth.register_page",
             "auth.forgot_password",
             "auth.reset_password",
             "static",
             "core.healthz",
+            "team.faq",
         }
         user_allowed = {
             "core.home",
             "team.index",
             "team.apply",
             "team.calendar",
+            "team.faq",
+            "core.license_page",
+            "core.license_document",
+            "core.disclaimer_page",
             "profile.view",
             "auth.logout_page",
             "compare.compare",

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}US Army Drone Team FAQ – drone_team{% endblock %}
+{% block body_attrs %} class="team-page team-faq"{% endblock %}
+{% block content %}
+<style>
+  body.team-faq {
+    background:
+      radial-gradient(1200px 720px at 10% 20%, rgba(59, 130, 246, 0.2), transparent 62%),
+      radial-gradient(1100px 640px at 92% 80%, rgba(16, 185, 129, 0.18), transparent 58%),
+      linear-gradient(145deg, #020617 0%, #0b1220 45%, #111827 100%);
+    color: #e2e8f0;
+  }
+
+  body.team-faq .site-main {
+    width: 100%;
+    padding: clamp(2.5rem, 4vw, 4rem) 0 clamp(3rem, 6vw, 5rem);
+  }
+
+  .faq {
+    width: min(1100px, 92%);
+    margin: 0 auto;
+  }
+
+  .faq__inner {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 18px;
+    padding: clamp(2rem, 4vw, 3rem);
+    box-shadow: 0 28px 44px -28px rgba(8, 47, 73, 0.7);
+    backdrop-filter: blur(12px);
+  }
+
+  .faq__header {
+    text-align: center;
+    margin-bottom: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  .faq__header h1 {
+    font-size: clamp(2rem, 3vw, 2.6rem);
+    color: #f8fafc;
+    margin-bottom: 0.75rem;
+  }
+
+  .faq__intro {
+    color: rgba(226, 232, 240, 0.85);
+    max-width: 640px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .faq__items {
+    display: grid;
+    gap: clamp(1.25rem, 2.5vw, 1.75rem);
+  }
+
+  .faq__item {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  }
+
+  .faq__question {
+    font-size: clamp(1.2rem, 2.5vw, 1.4rem);
+    margin-bottom: 0.75rem;
+    color: #f8fafc;
+  }
+
+  .faq__answer {
+    color: rgba(226, 232, 240, 0.9);
+    line-height: 1.65;
+  }
+</style>
+<section class="faq">
+  <div class="faq__inner">
+    <header class="faq__header">
+      <h1>US Army Drone Team Frequently Asked Questions</h1>
+      <p class="faq__intro">
+        Find quick answers about service commitments, training expectations, and how selection works for the
+        US Army Drone Team.
+      </p>
+    </header>
+    <div class="faq__items">
+      {% for item in faqs %}
+        <article class="faq__item">
+          <h2 class="faq__question">{{ item.question }}</h2>
+          <p class="faq__answer">{{ item.answer }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

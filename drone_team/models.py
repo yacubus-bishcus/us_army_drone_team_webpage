@@ -26,6 +26,7 @@ class WhitePaper(db.Model):
     abstract = db.Column(db.Text)
     filename = db.Column(db.String(300), nullable=False)
     filesize = db.Column(db.Integer)
+    data = db.Column(db.LargeBinary, nullable=False)
     uploaded_at = db.Column(db.DateTime, index=True, nullable=False)
 
 class SoftwareFile(db.Model):
