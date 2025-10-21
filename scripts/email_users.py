@@ -11,14 +11,16 @@ Usage (from the project root)::
 
     python -m scripts.email_users --dry_run --subject "Subject" --message "Message"
     python -m scripts.email_users --dry_run --missing_applications
-
+    python -m scripts.email_users --callsigns-file callsigns.txt --subject "Subject" --message "Message"
 Use ``--dry-run`` to see which addresses would receive the message
-without actually sending any email.
+without actually sending any email. Provide ``--callsigns-file`` to
+limit notifications to the callsigns listed in the given text file.
 """
 
 from __future__ import annotations
 
-import argparse, logging
+import argparse, logging, os
+from pathlib import Path 
 from typing import List, Set, Tuple
 from .load_user_env import load_environment
 from sqlalchemy import text
@@ -38,22 +40,48 @@ MISSING_APP_BODY_TEMPLATE = (
 )
 
 
-def fetch_user_emails(app) -> List[str]:
+def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]:
     """Return sorted list of unique email addresses from the users table."""
 
     with app.app_context():
         init_users_db(app)
         engine = get_engine(app)
+        filters = ["email IS NOT NULL", "TRIM(email) <> ''"]
+        params: dict[str, str] = {}
+        normalized_callsigns: List[str] = []
+        
+        if callsigns:
+            normalized_callsigns = sorted(
+                {callsign.strip().lower() for callsign in callsigns if callsign.strip()}
+            )
+
+        if normalized_callsigns:
+            placeholders = ", ".join(
+                f":callsign_{index}" for index, _ in enumerate(normalized_callsigns)
+            )
+            filters.append(f"LOWER(TRIM(callsign)) IN ({placeholders})")
+            params.update(
+                {
+                    f"callsign_{index}": callsign
+                    for index, callsign in enumerate(normalized_callsigns)
+                }
+            )
+        elif callsigns is not None:
+            # An explicit but empty list of callsigns means no recipients.
+            return []
+
+        where_clause = " AND ".join(filters)
         query = text(
-            """
+            f"""
             SELECT DISTINCT email
             FROM users
-            WHERE email IS NOT NULL AND TRIM(email) <> ''
+            WHERE {where_clause}
             ORDER BY email
             """
         )
+
         with engine.connect() as connection:
-            rows = connection.execute(query)
+            rows = connection.execute(query, params)
             emails: Set[str] = {
                 row.email.strip() for row in rows if getattr(row, "email", None)
             }
@@ -93,6 +121,21 @@ def fetch_missing_application_users(app) -> List[Tuple[str, str]]:
                     recipients.append((email, username))
     return recipients
 
+def load_callsigns_from_file(path: str | os.PathLike[str]) -> List[str]:
+    file_path = Path(path)
+    if not file_path.is_file():
+        raise FileNotFoundError(f"Callsign file not found: {file_path}")
+
+    callsigns: List[str] = []
+    with file_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            callsigns.append(stripped)
+
+    return callsigns
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -128,19 +171,39 @@ def parse_args() -> argparse.Namespace:
             "application."
         ),
     )
+    parser.add_argument(
+        "--callsigns-file",
+        dest="callsigns_file",
+        type=str,
+        default=None,
+        help=(
+            "Path to a text file containing one callsign per line. "
+            "Only users matching these callsigns will be emailed."
+        )
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
     load_environment()
     args = parse_args()
-
     app = create_app()
     subject = args.subject
     body = args.body
     missing_applications = args.missing_applications
+    callsigns: List[str] | None = None 
+    
+    if args.callsigns_file:
+        try:
+            callsigns = load_callsigns_from_file(args.callsigns_file)
+            except OSError as exc:
+                logging.error("Unable to read callsign file '%s': %s", args.callsigns_file, exc)
+                return 
+        if not callsigns:
+            logging.warning("No callsigns found in file %s", args.callsigns_file)
+            return 
+        logging.info("Restricting email recipients to %d callsigns listed in %s", len(callsigns), args.callsigns_file,)
 
     if not args.dry_run and not missing_applications:
         if not subject or not body:
@@ -158,10 +221,11 @@ def main() -> None:
             len(recipients),
         )
     else:
-        emails = fetch_user_emails(app)
+        emails = fetch_user_emails(app, callsigns=callsigns)
         if not emails:
             logging.warning("No user email addresses found.")
             return
+        
         logging.info("Prepared to send message to %d recipients.", len(emails))
 
     if args.dry_run:
