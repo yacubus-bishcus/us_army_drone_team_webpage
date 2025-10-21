@@ -115,12 +115,14 @@ def create_app():
             "auth.reset_password",
             "static",
             "core.healthz",
+            "team.faq",
         }
         user_allowed = {
             "core.home",
             "team.index",
             "team.apply",
             "team.calendar",
+            "team.faq",
             "profile.view",
             "auth.logout_page",
             "compare.compare",
