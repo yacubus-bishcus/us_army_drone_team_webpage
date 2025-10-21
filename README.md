@@ -67,8 +67,5 @@ Use of this project is governed by a proprietary [End User License Agreement](LI
 
 ## Disclaimer
 
-This repository is provided for research and educational purposes only. It is
-not an official U.S. Army communication channel, endorsement, or recruitment
-platform, and it should not be interpreted as such. Content, assets, and
-demonstrations are fictionalized to support software development workflows and
-do not represent real-world commitments, capabilities, or policy statements.
+This webpage and its associated respositories are provided for research and educational purposes only. It is not an official U.S. Army communication channel, endorsement, or recruitment
+platform, and it should not be interpreted as such. Content, assets, and demonstrations do not represent real-world commitments, capabilities, or policy statements.
