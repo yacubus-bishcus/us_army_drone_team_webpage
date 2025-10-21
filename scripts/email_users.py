@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import argparse, logging, os
 from pathlib import Path 
-from typing import List, Set, Tuple
+from typing import Iterable, List, Set, Tuple
 from .load_user_env import load_environment
 from sqlalchemy import text
 from drone_team import create_app
@@ -122,9 +122,26 @@ def fetch_missing_application_users(app) -> List[Tuple[str, str]]:
     return recipients
 
 def load_callsigns_from_file(path: str | os.PathLike[str]) -> List[str]:
-    file_path = Path(path)
-    if not file_path.is_file():
-        raise FileNotFoundError(f"Callsign file not found: {file_path}")
+    provided_path = Path(path)
+
+    if provided_path.is_absolute():
+        candidate_paths = [provided_path]
+    else:
+        scripts_dir = Path(__file__).resolve().parent
+        project_root = scripts_dir.parent
+        candidate_paths = [scripts_dir / provided_path, project_root / provided_path]
+
+    file_path: Path | None = None
+    for candidate in candidate_paths:
+        if candidate.is_file():
+            file_path = candidate
+            break
+
+    if file_path is None:
+        searched = ", ".join(str(candidate) for candidate in candidate_paths)
+        raise FileNotFoundError(
+            f"Callsign file not found. Looked in: {searched or provided_path}"
+        )
 
     callsigns: List[str] = []
     with file_path.open("r", encoding="utf-8") as handle:
