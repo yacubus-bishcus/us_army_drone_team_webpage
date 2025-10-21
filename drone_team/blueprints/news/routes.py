@@ -9,6 +9,7 @@ from drone_team.extensions import db
 from drone_team.models import WhitePaper
 from . import news_bp
 from sqlalchemy import inspect
+from sqlalchemy.orm import load_only
 from werkzeug.utils import secure_filename
 
 # GET page
@@ -108,8 +109,23 @@ def search_whitepapers():
     if tag:
         query = query.filter(WhitePaper.tags.ilike(f"%{tag}%"))
 
-    results = (query.order_by(WhitePaper.uploaded_at.desc())
-                    .limit(50).all())
+    results = (
+        query.options(
+            load_only(
+                WhitePaper.id,
+                WhitePaper.title,
+                WhitePaper.authors,
+                WhitePaper.year,
+                WhitePaper.tags,
+                WhitePaper.filesize,
+                WhitePaper.filename,
+                WhitePaper.uploaded_at,
+            )
+        )
+        .order_by(WhitePaper.uploaded_at.desc())
+        .limit(50)
+        .all()
+    )
 
     return jsonify([
         {
