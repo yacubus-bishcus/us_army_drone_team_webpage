@@ -16,7 +16,7 @@ from . import news_bp
 from sqlalchemy import inspect
 from sqlalchemy.orm import load_only
 from werkzeug.utils import secure_filename
-from drone_team.mailer import send_admin_email_sendgrid
+from drone_team.mailer import send_admin_email
 
 # GET page
 @news_bp.route("/", methods=["GET"])
@@ -191,7 +191,7 @@ def upload_whitepaper():
                 "</ul>"
             )
             try:
-                send_admin_email_sendgrid(app_obj, subject, body)
+                send_admin_email(app_obj, subject, body)
             except Exception as exc:
                 current_app.logger.exception(
                     "Failed to send admin alert for blocked white paper upload: %s", exc
