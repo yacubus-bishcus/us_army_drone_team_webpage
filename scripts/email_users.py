@@ -26,7 +26,7 @@ from .load_user_env import load_environment
 from sqlalchemy import text
 from drone_team import create_app
 from drone_team.db import get_engine, init_users_db
-from drone_team.mailer import send_email
+from drone_team.mailer import send_email, send_admin_email
 
 MISSING_APP_SUBJECT = "Reminder: Submit Your US Army Drone Team Application"
 MISSING_APP_BODY_TEMPLATE = (
@@ -181,6 +181,15 @@ def parse_args() -> argparse.Namespace:
             "Only users matching these callsigns will be emailed."
         )
     )
+    parser.add_argument(
+        "--admin_email",
+        dest="admin_email",
+        action="store_true",
+        help=(
+            "Send the message to the configured admin recipients even when "
+            "--dry_run is enabled."
+        )
+    )
     return parser.parse_args()
 
 
@@ -230,7 +239,12 @@ def main() -> None:
         logging.info("Prepared to send message to %d recipients.", len(emails))
 
     if args.dry_run:
-        logging.info("Dry run enabled; no emails will be sent.")
+        if args.admin_email:
+            logging.info(
+                "Dry run enabled; user emails suppressed but an admin notification will be sent."
+            )
+        else:
+            logging.info("Dry run enabled; no emails will be sent.")
 
     with app.app_context():
         if missing_applications:
@@ -281,6 +295,28 @@ def main() -> None:
                     logging.info("Email sent to %s", email)
                 else:
                     logging.error("Failure when sending to %s", email)
+
+        if args.admin_email:
+            admin_subject = subject
+            if missing_applications:
+                admin_body = MISSING_APP_BODY_TEMPLATE.format(username="Admin")
+            else:
+                admin_body = body
+
+            if not admin_subject or not admin_body:
+                logging.warning(
+                    "Admin email requested but subject or body is missing; skipping admin email."
+                )
+            else:
+                try:
+                    success = send_admin_email(app, admin_subject, admin_body)
+                except Exception as exc:  # pragma: no cover - defensive logging
+                    logging.exception("Failed to send admin email: %s", exc)
+                else:
+                    if success:
+                        logging.info("Admin email sent to configured recipients.")
+                    else:
+                        logging.error("Failure when sending admin email.")
 
     return
 
