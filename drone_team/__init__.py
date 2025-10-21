@@ -135,7 +135,8 @@ def create_app():
             "news.uas_news",
             "news.open_article",
             "news.search_whitepapers",
-            "news.download_whitepapers",
+            "news.download_whitepaper",
+            "news.upload_whitepaper",
         }
         if ep not in public_endpoints:
             if not getattr(current_user, "is_authenticated", False):
