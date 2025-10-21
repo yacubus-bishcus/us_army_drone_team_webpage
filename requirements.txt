@@ -1,5 +1,5 @@
-pandas 
-flask 
+pandas
+flask
 gunicorn
 flask-login
 python-dotenv
@@ -15,4 +15,4 @@ requests>=2.31.0
 sendgrid
 clamd
 pikepdf
-pdfminer 
+pdfminer.six
