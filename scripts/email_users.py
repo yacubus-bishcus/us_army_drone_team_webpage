@@ -23,7 +23,7 @@ import argparse, logging, os
 from pathlib import Path 
 from typing import Iterable, List, Set, Tuple
 from .load_user_env import load_environment
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from drone_team import create_app
 from drone_team.db import get_engine, init_users_db
 from drone_team.mailer import send_email, send_admin_email
@@ -46,39 +46,88 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]
     with app.app_context():
         init_users_db(app)
         engine = get_engine(app)
-        filters = ["email IS NOT NULL", "TRIM(email) <> ''"]
+        inspector = inspect(engine)
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        has_callsign_column = "callsign" in user_columns
+
+        filters = ["u.email IS NOT NULL", "TRIM(u.email) <> ''"]
         params: dict[str, str] = {}
         normalized_callsigns: List[str] = []
-        
+
         if callsigns:
             normalized_callsigns = sorted(
                 {callsign.strip().lower() for callsign in callsigns if callsign.strip()}
             )
 
+        if normalized_callsigns and not has_callsign_column:
+            table_names = set(inspector.get_table_names())
+            if "team_applications" not in table_names:
+                logging.warning(
+                    "Unable to filter by callsign because the team_applications table "
+                    "is missing. Returning no recipients."
+                )
+                return []
+
         if normalized_callsigns:
             placeholders = ", ".join(
                 f":callsign_{index}" for index, _ in enumerate(normalized_callsigns)
             )
-            filters.append(f"LOWER(TRIM(callsign)) IN ({placeholders})")
             params.update(
                 {
                     f"callsign_{index}": callsign
                     for index, callsign in enumerate(normalized_callsigns)
                 }
             )
+
         elif callsigns is not None:
             # An explicit but empty list of callsigns means no recipients.
             return []
 
-        where_clause = " AND ".join(filters)
-        query = text(
-            f"""
-            SELECT DISTINCT email
-            FROM users
-            WHERE {where_clause}
-            ORDER BY email
-            """
-        )
+        if normalized_callsigns and has_callsign_column:
+            filters.append(f"LOWER(TRIM(u.callsign)) IN ({placeholders})")
+            query = text(
+                f"""
+                SELECT DISTINCT u.email
+                FROM users u
+                WHERE {' AND '.join(filters)}
+                ORDER BY u.email
+                """
+            )
+        elif normalized_callsigns:
+            filters.append(f"LOWER(TRIM(latest.callsign)) IN ({placeholders})")
+            query = text(
+                f"""
+                WITH latest AS (
+                    SELECT username, callsign
+                    FROM (
+                        SELECT
+                            username,
+                            callsign,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY username
+                                ORDER BY created_at DESC
+                            ) AS rn
+                        FROM team_applications
+                        WHERE callsign IS NOT NULL AND TRIM(callsign) <> ''
+                    ) ranked
+                    WHERE rn = 1
+                )
+                SELECT DISTINCT u.email
+                FROM users u
+                JOIN latest ON latest.username = u.username
+                WHERE {' AND '.join(filters)}
+                ORDER BY u.email
+                """
+            )
+        else:
+            query = text(
+                f"""
+                SELECT DISTINCT u.email
+                FROM users u
+                WHERE {' AND '.join(filters)}
+                ORDER BY u.email
+                """
+            )
 
         with engine.connect() as connection:
             rows = connection.execute(query, params)
