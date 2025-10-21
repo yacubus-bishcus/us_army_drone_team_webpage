@@ -197,9 +197,10 @@ def main() -> None:
     if args.callsigns_file:
         try:
             callsigns = load_callsigns_from_file(args.callsigns_file)
-            except OSError as exc:
-                logging.error("Unable to read callsign file '%s': %s", args.callsigns_file, exc)
-                return 
+        except OSError as exc:
+            logging.error("Unable to read callsign file '%s': %s", args.callsigns_file, exc)
+            return 
+            
         if not callsigns:
             logging.warning("No callsigns found in file %s", args.callsigns_file)
             return 

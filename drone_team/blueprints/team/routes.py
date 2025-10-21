@@ -147,6 +147,13 @@ def faq():
                 "AFT score, Soldier Talent Profile, Interview answers, etc will be considered."
             ),
         },
+        {
+            "question": "I have not received any emails from the Drone Team?",
+            "answer": (
+                "Check your spam email for messages from usarmydroneteamexecutiveoffice@gmail.com."
+            ),
+
+        },
     ]
 
     return render_template("team_faq.html", faqs=faqs)
