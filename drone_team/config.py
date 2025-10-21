@@ -79,8 +79,11 @@ class Config:
     REMEMBER_COOKIE_SECURE = (APP_ENV == "production")
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 days (seconds)
 
-    # Content Restrictions 
-    MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25 MB upload cap
+    # Content Restrictions
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 25 * 1024 * 1024))
+    CLAMD_UNIX_SOCKET = os.getenv("CLAMD_UNIX_SOCKET")
+    CLAMD_TCP_HOST = os.getenv("CLAMD_TCP_HOST", "127.0.0.1")
+    CLAMD_TCP_PORT = int(os.getenv("CLAMD_TCP_PORT", "3310"))
 
     # Velocidrone Integration
     VELOCIDRONE_LOGIN_URL = os.getenv("VELOCIDRONE_LOGIN_URL", "").strip()

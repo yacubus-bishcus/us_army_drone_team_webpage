@@ -15,6 +15,7 @@
   .admin-add .row{display:flex;gap:.5rem;align-items:center}
   .admin-add input{flex:1;padding:10px;border:1px solid #bbb;border-radius:8px}
   .admin-add button{padding:10px 14px;border:1px solid #999;background:#eee;border-radius:8px;cursor:pointer}
+  .upload .disclaimer{font-size:.85rem;color:#444;margin:.5rem 0 1rem;line-height:1.4}
   @media (max-width:980px){.page{grid-template-columns:1fr}.sidebar{position:static}}
 </style>
 
@@ -113,6 +114,7 @@
 
       <div class="upload">
         <h3>Upload a White Paper (PDF)</h3>
+        <p class="disclaimer">Disclaimer: This webpage is authorized for Unclassified (General) only. Do not upload any CUI, PII, or classified information. For CUI, visit the US Army Drone Team Sharepoint. See License and/or disclaimer for additional details.</p>
         <form action="{{ url_for('news.upload_whitepaper') }}" method="post" enctype="multipart/form-data">
           <div class="field"><label>Title *</label><input name="title" required></div>
           <div class="field"><label>Authors</label><input name="authors" placeholder="Last, First; Last, First"></div>
