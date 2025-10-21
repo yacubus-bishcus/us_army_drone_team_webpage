@@ -80,7 +80,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 days (seconds)
 
     # Content Restrictions
-    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(25 * 1024 * 1024)))
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 26214400))
 
     # Velocidrone Integration
     VELOCIDRONE_LOGIN_URL = os.getenv("VELOCIDRONE_LOGIN_URL", "").strip()
