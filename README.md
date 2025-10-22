@@ -1,5 +1,12 @@
+---
+current_version: v1.3.3
+development_version: v1.3.4
+cao: 20OCT2025
+---
 # US Army Drone Team Webpage Limited Distribution
-Beta Release v1 will only include the Drone Team Page.
+Current Deployed Version: {{page.current_version}}
+Current Development Version: {{page.development_version}}
+This README is current as of: {{page.cao}}
 
 US Army Drone Team Page
 ==
@@ -38,9 +45,7 @@ Postgres database and Google Sheets remain untouched. When this flag is enabled 
 
 ## Collaboration workflow
 
-Active feature development now happens on the `velocidrone` branch. Create pull
-requests against that branch instead of `development` so review environments and
-deploy previews mirror the latest secure Velocidrone login work.
+Active feature development now happens on `development_{{page.development_version}}`
 
 ## Deployment checklist
 
@@ -61,6 +66,27 @@ deploy previews mirror the latest secure Velocidrone login work.
    `news_articles.open_count` column) are applied before the web service starts.
 
 
+## Postgres Data Handling
+### Access Postgres Database from Terminal 
+```bash
+psql postgresql://drone_team_applicants_user:nURgLgvrSrXdd66YhV7b0vyr5KJ8n7Sy@dpg-d3embhffte5s73cn2udg-a.ohio-postgres.render.com/drone_team_applicants
+```
+### To Copy Current Data from Postgres Database to csv:
+```bash
+\copy (SELECT * FROM public.$table_name ORDER BY id) TO '$table_name_backup_2025-10-21.csv' CSV HEADER;
+```
+### To Delete Pending Users/Users/Applications Etc...
+```psql drone_team_applicants
+BEGIN;              
+
+DELETE FROM pending_users
+WHERE username = 'nate';
+
+DELETE FROM users
+WHERE username = 'nate';
+
+COMMIT;
+```
 ## License
 
 Use of this project is governed by a proprietary [End User License Agreement](LICENSE). Redistribution, modification, and other derivative use cases are prohibited without prior written consent.

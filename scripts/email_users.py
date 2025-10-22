@@ -21,12 +21,12 @@ from __future__ import annotations
 
 import argparse, logging, os
 from pathlib import Path 
-from typing import List, Set, Tuple
+from typing import Iterable, List, Set, Tuple
 from .load_user_env import load_environment
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from drone_team import create_app
 from drone_team.db import get_engine, init_users_db
-from drone_team.mailer import send_email
+from drone_team.mailer import send_email, send_admin_email
 
 MISSING_APP_SUBJECT = "Reminder: Submit Your US Army Drone Team Application"
 MISSING_APP_BODY_TEMPLATE = (
@@ -46,39 +46,88 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]
     with app.app_context():
         init_users_db(app)
         engine = get_engine(app)
-        filters = ["email IS NOT NULL", "TRIM(email) <> ''"]
+        inspector = inspect(engine)
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        has_callsign_column = "callsign" in user_columns
+
+        filters = ["u.email IS NOT NULL", "TRIM(u.email) <> ''"]
         params: dict[str, str] = {}
         normalized_callsigns: List[str] = []
-        
+
         if callsigns:
             normalized_callsigns = sorted(
                 {callsign.strip().lower() for callsign in callsigns if callsign.strip()}
             )
 
+        if normalized_callsigns and not has_callsign_column:
+            table_names = set(inspector.get_table_names())
+            if "team_applications" not in table_names:
+                logging.warning(
+                    "Unable to filter by callsign because the team_applications table "
+                    "is missing. Returning no recipients."
+                )
+                return []
+
         if normalized_callsigns:
             placeholders = ", ".join(
                 f":callsign_{index}" for index, _ in enumerate(normalized_callsigns)
             )
-            filters.append(f"LOWER(TRIM(callsign)) IN ({placeholders})")
             params.update(
                 {
                     f"callsign_{index}": callsign
                     for index, callsign in enumerate(normalized_callsigns)
                 }
             )
+
         elif callsigns is not None:
             # An explicit but empty list of callsigns means no recipients.
             return []
 
-        where_clause = " AND ".join(filters)
-        query = text(
-            f"""
-            SELECT DISTINCT email
-            FROM users
-            WHERE {where_clause}
-            ORDER BY email
-            """
-        )
+        if normalized_callsigns and has_callsign_column:
+            filters.append(f"LOWER(TRIM(u.callsign)) IN ({placeholders})")
+            query = text(
+                f"""
+                SELECT DISTINCT u.email
+                FROM users u
+                WHERE {' AND '.join(filters)}
+                ORDER BY u.email
+                """
+            )
+        elif normalized_callsigns:
+            filters.append(f"LOWER(TRIM(latest.callsign)) IN ({placeholders})")
+            query = text(
+                f"""
+                WITH latest AS (
+                    SELECT username, callsign
+                    FROM (
+                        SELECT
+                            username,
+                            callsign,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY username
+                                ORDER BY created_at DESC
+                            ) AS rn
+                        FROM team_applications
+                        WHERE callsign IS NOT NULL AND TRIM(callsign) <> ''
+                    ) ranked
+                    WHERE rn = 1
+                )
+                SELECT DISTINCT u.email
+                FROM users u
+                JOIN latest ON latest.username = u.username
+                WHERE {' AND '.join(filters)}
+                ORDER BY u.email
+                """
+            )
+        else:
+            query = text(
+                f"""
+                SELECT DISTINCT u.email
+                FROM users u
+                WHERE {' AND '.join(filters)}
+                ORDER BY u.email
+                """
+            )
 
         with engine.connect() as connection:
             rows = connection.execute(query, params)
@@ -122,9 +171,26 @@ def fetch_missing_application_users(app) -> List[Tuple[str, str]]:
     return recipients
 
 def load_callsigns_from_file(path: str | os.PathLike[str]) -> List[str]:
-    file_path = Path(path)
-    if not file_path.is_file():
-        raise FileNotFoundError(f"Callsign file not found: {file_path}")
+    provided_path = Path(path)
+
+    if provided_path.is_absolute():
+        candidate_paths = [provided_path]
+    else:
+        scripts_dir = Path(__file__).resolve().parent
+        project_root = scripts_dir.parent
+        candidate_paths = [scripts_dir / provided_path, project_root / provided_path]
+
+    file_path: Path | None = None
+    for candidate in candidate_paths:
+        if candidate.is_file():
+            file_path = candidate
+            break
+
+    if file_path is None:
+        searched = ", ".join(str(candidate) for candidate in candidate_paths)
+        raise FileNotFoundError(
+            f"Callsign file not found. Looked in: {searched or provided_path}"
+        )
 
     callsigns: List[str] = []
     with file_path.open("r", encoding="utf-8") as handle:
@@ -181,6 +247,15 @@ def parse_args() -> argparse.Namespace:
             "Only users matching these callsigns will be emailed."
         )
     )
+    parser.add_argument(
+        "--admin_email",
+        dest="admin_email",
+        action="store_true",
+        help=(
+            "Send the message to the configured admin recipients even when "
+            "--dry_run is enabled."
+        )
+    )
     return parser.parse_args()
 
 
@@ -230,7 +305,12 @@ def main() -> None:
         logging.info("Prepared to send message to %d recipients.", len(emails))
 
     if args.dry_run:
-        logging.info("Dry run enabled; no emails will be sent.")
+        if args.admin_email:
+            logging.info(
+                "Dry run enabled; user emails suppressed but an admin notification will be sent."
+            )
+        else:
+            logging.info("Dry run enabled; no emails will be sent.")
 
     with app.app_context():
         if missing_applications:
@@ -281,6 +361,28 @@ def main() -> None:
                     logging.info("Email sent to %s", email)
                 else:
                     logging.error("Failure when sending to %s", email)
+
+        if args.admin_email:
+            admin_subject = subject
+            if missing_applications:
+                admin_body = MISSING_APP_BODY_TEMPLATE.format(username="Admin")
+            else:
+                admin_body = body
+
+            if not admin_subject or not admin_body:
+                logging.warning(
+                    "Admin email requested but subject or body is missing; skipping admin email."
+                )
+            else:
+                try:
+                    success = send_admin_email(app, admin_subject, admin_body)
+                except Exception as exc:  # pragma: no cover - defensive logging
+                    logging.exception("Failed to send admin email: %s", exc)
+                else:
+                    if success:
+                        logging.info("Admin email sent to configured recipients.")
+                    else:
+                        logging.error("Failure when sending admin email.")
 
     return
 

@@ -25,7 +25,7 @@
   <h1>US Army Drone Team Application</h1>
 
   <div class="card">
-    <form class="app-form" method="post" action="{{ url_for('team.apply') }}" enctype="multipart/form-data">
+    <form class="app-form" method="post" action="{{ url_for('team.apply') }}">
       <div class="row cols-2">
         <div class="field">
           <label for="name">Full name *</label>
@@ -134,20 +134,11 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label for="video">Intro video — mp4/mov/avi/mkv</label>
-          <input id="video" name="video" type="file" accept=".mp4,.mov,.avi,.mkv">
-        </div>
-      </div>
-      
       <!-- Submit Application -->
       <div class="actions">
         <button class="btn" type="submit">Submit Application</button>
         <a class="btn" href="{{ url_for('team.apply') }}">Reset</a>
       </div>
-
-      <p class="meta">Max size is limited by server config (MAX_CONTENT_LENGTH). If your upload fails, try compressing the video.</p>
     </form>
   </div>
 </div>
