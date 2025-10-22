@@ -17,3 +17,4 @@ data/data/news_articles.csv
 .vscode
 *_backup*
 .~lock.*
+top_callsigns.txt
