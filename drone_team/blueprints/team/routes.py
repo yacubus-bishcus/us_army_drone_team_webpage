@@ -1,10 +1,8 @@
 #/drone_team/blueprints/team/routes.py
 import uuid, os, threading
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 
@@ -13,8 +11,6 @@ from ...services import team as svc
 from ...services import sheets as sheets_svc
 from drone_team import mailer
 from ...db import insert_team_application, get_latest_team_application_by_username
-
-ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv"}
 
 def _async_send(app, to, subject, body):
     # Ensure app context for logging / config
@@ -187,22 +183,7 @@ def apply():
             flash(f"Missing required fields: {', '.join(missing)}", "error")
             return redirect(url_for("team.apply"))
 
-        # Optional video upload
-        video = request.files.get("video")
-        saved_rel = ""
-        if video and video.filename:
-            ext = Path(video.filename).suffix.lower()
-            if ext not in ALLOWED_VIDEO_EXTS:
-                flash("Invalid video type. Allowed: mp4, mov, avi, mkv", "error")
-                return redirect(url_for("team.apply"))
-
-            vid_dir = svc.videos_dir(current_app)
-            vid_dir.mkdir(parents=True, exist_ok=True)
-            fname = f"{data['app_id']}_{secure_filename(video.filename)}"
-            (vid_dir / fname).write_bytes(video.read())
-            saved_rel = f"videos/{fname}"
-
-        data["video_path"] = saved_rel
+        data["video_path"] = ""
         # Save + email
         saved = svc.append_application(current_app, data)
         # Ensure we always pass a dict to the mailer
