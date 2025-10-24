@@ -14,14 +14,20 @@ from .services.uas import create_csv_if_missing
 from .services.aars import create_aar_csv_if_missing, normalize_aar_csv_formats
 from .cli import register_cli
 
-def create_app():
+def create_app(override=False):
     load_dotenv()
     app = Flask(__name__, template_folder="../templates", static_folder="../static")
     app.config.from_object(Config)
 
-    sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+    if override:
+        sandbox_mode = False
+    else:
+        sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+
     if sandbox_mode:
         app.logger.info("SANDBOX_DATA_MODE enabled; routing database work to SQLite and skipping external sinks")
+    else:
+        app.logger.info("SANDBOX_DATA_MODE disabled; routing production database")
 
     # ★ Prefer DATABASE_URL (Postgres) if provided and sandbox mode is off; otherwise keep SQLite behavior
     db_url_env = os.getenv("DATABASE_URL")

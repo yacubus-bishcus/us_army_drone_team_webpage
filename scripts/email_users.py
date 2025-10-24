@@ -2,10 +2,13 @@
 
 This script connects to the configured users database, gathers every
 non-empty email address from the ``users`` table, and sends each
-recipient a message. Emails are dispatched individually so delivery failures for one address do not affect the
-others. An optional ``--missing_applications`` flag targets only users who
-have not yet submitted an application and sends them a pre-defined
-reminder message.
+recipient a message. Emails are dispatched individually so delivery failures for one address do not affect the others. 
+
+An optional ``--missing_applications`` flag targets only users who have not yet submitted an application and sends them a pre-defined reminder message.
+
+An optional ``--applicants`` flag targets only users that have submitted an application and sends them a custom message. 
+
+An optional ``--callsigns-file`` flag targets emails based on the leaderboard callsigns and sends them a custom message.
 
 Usage (from the project root)::
 
@@ -13,9 +16,9 @@ Usage (from the project root)::
     python -m scripts.email_users --dry_run --missing_applications
     python -m scripts.email_users --dry_run --applicants --subject "Subject" --message "Message"
     python -m scripts.email_users --callsigns-file callsigns.txt --subject "Subject" --message "Message"
+
 Use ``--dry-run`` to see which addresses would receive the message
-without actually sending any email. Provide ``--callsigns-file`` to
-limit notifications to the callsigns listed in the given text file.
+without actually sending any email. Within messages insert variable {username} to address users.
 """
 
 from __future__ import annotations
@@ -350,6 +353,15 @@ def parse_args() -> argparse.Namespace:
             "--dry_run is enabled."
         )
     )
+    parser.add_argument(
+        "--SANDBOX_DISABLE",
+        dest="sandbox_disable",
+        action="store_true",
+        help=(
+            "Override SANDBOX_DATA_MODE and force sandbox features off even if the "
+            "environment enables them."
+        )
+    )
     return parser.parse_args()
 
 
@@ -357,7 +369,12 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     load_environment()
     args = parse_args()
-    app = create_app()
+    override = False 
+    if getattr(args, "sandbox_disable", False):
+        override = True 
+        logging.info("SANDBOX_DATA_MODE disabled; Accessing production database.")
+
+    app = create_app(override)
     subject = args.subject
     body = args.body
     missing_applications = args.missing_applications
