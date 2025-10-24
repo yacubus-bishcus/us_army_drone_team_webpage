@@ -11,6 +11,7 @@ Usage (from the project root)::
 
     python -m scripts.email_users --dry_run --subject "Subject" --message "Message"
     python -m scripts.email_users --dry_run --missing_applications
+    python -m scripts.email_users --dry_run --applicants --subject "Subject" --message "Message"
     python -m scripts.email_users --callsigns-file callsigns.txt --subject "Subject" --message "Message"
 Use ``--dry-run`` to see which addresses would receive the message
 without actually sending any email. Provide ``--callsigns-file`` to
@@ -25,7 +26,7 @@ from typing import Iterable, List, Set, Tuple
 from .load_user_env import load_environment
 from sqlalchemy import inspect, text
 from drone_team import create_app
-from drone_team.db import get_engine, init_users_db
+from drone_team.db import get_engine, init_team_applications, init_users_db
 from drone_team.mailer import send_email, send_admin_email
 
 MISSING_APP_SUBJECT = "ONLY 6 DAYS to Compete for the US Army Drone Team: APPLY TODAY"
@@ -139,6 +140,62 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]
     return sorted(emails)
 
 
+def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> List[str]:
+    """Return sorted list of unique applicant email addresses."""
+
+    with app.app_context():
+        init_team_applications(app)
+        engine = get_engine(app)
+        inspector = inspect(engine)
+        table_names = set(inspector.get_table_names())
+        if "team_applications" not in table_names:
+            logging.warning(
+                "Unable to load applicant emails because the team_applications table is missing."
+            )
+            return []
+
+        filters = ["a.email IS NOT NULL", "TRIM(a.email) <> ''"]
+        params: dict[str, str] = {}
+        normalized_callsigns: List[str] = []
+
+        if callsigns:
+            normalized_callsigns = sorted(
+                {callsign.strip().lower() for callsign in callsigns if callsign.strip()}
+            )
+
+        if normalized_callsigns:
+            placeholders = ", ".join(
+                f":callsign_{index}" for index, _ in enumerate(normalized_callsigns)
+            )
+            params.update(
+                {
+                    f"callsign_{index}": callsign
+                    for index, callsign in enumerate(normalized_callsigns)
+                }
+            )
+            filters.append(f"LOWER(TRIM(a.callsign)) IN ({placeholders})")
+
+        elif callsigns is not None:
+            # An explicit but empty list of callsigns means no recipients.
+            return []
+
+        query = text(
+            f"""
+            SELECT DISTINCT a.email
+            FROM team_applications a
+            WHERE {' AND '.join(filters)}
+            ORDER BY a.email
+            """
+        )
+
+        with engine.connect() as connection:
+            rows = connection.execute(query, params)
+            emails: Set[str] = {
+                row.email.strip() for row in rows if getattr(row, "email", None)
+            }
+    return sorted(emails)
+
+
 def fetch_missing_application_users(app) -> List[Tuple[str, str]]:
     """Return (email, username) tuples for users without applications."""
 
@@ -240,6 +297,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--applicants",
+        dest="applicants",
+        action="store_true",
+        help=(
+            "Send the message to email addresses collected from the "
+            "team_applications table."
+        ),
+    )
+    parser.add_argument(
         "--callsigns-file",
         dest="callsigns_file",
         type=str,
@@ -269,8 +335,13 @@ def main() -> None:
     subject = args.subject
     body = args.body
     missing_applications = args.missing_applications
-    callsigns: List[str] | None = None 
-    
+    applicants = args.applicants
+    callsigns: List[str] | None = None
+
+    if missing_applications and applicants:
+        logging.error("The --missing_applications and --applicants flags cannot be used together.")
+        return
+
     if args.callsigns_file:
         try:
             callsigns = load_callsigns_from_file(args.callsigns_file)
@@ -299,12 +370,22 @@ def main() -> None:
             len(recipients),
         )
     else:
-        emails = fetch_user_emails(app, callsigns=callsigns)
-        if not emails:
-            logging.warning("No user email addresses found.")
-            return
-        
-        logging.info("Prepared to send message to %d recipients.", len(emails))
+        if applicants:
+            emails = fetch_applicant_emails(app, callsigns=callsigns)
+            if not emails:
+                logging.warning("No applicant email addresses found.")
+                return
+            logging.info(
+                "Prepared to send message to %d applicants.",
+                len(emails),
+            )
+        else:
+            emails = fetch_user_emails(app, callsigns=callsigns)
+            if not emails:
+                logging.warning("No user email addresses found.")
+                return
+
+            logging.info("Prepared to send message to %d recipients.", len(emails))
 
     if args.dry_run:
         if args.admin_email:
