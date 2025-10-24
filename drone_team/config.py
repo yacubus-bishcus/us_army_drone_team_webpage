@@ -13,22 +13,30 @@ def _sandbox_sqlite_url():
     return os.getenv("SANDBOX_SQLITE_URL", "sqlite:///drone_team_debug.db")
 
 # --- DB URL normalization
+def normalize_database_url(url: str) -> str:
+    """Normalize Postgres connection URLs for SQLAlchemy."""
+
+    # Normalize scheme for SQLAlchemy 2.x + psycopg 3
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+
+    # Ensure SSL if not explicitly given
+    if "sslmode=" not in url:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}sslmode=require"
+
+    return url
+
+
 def _normalized_db_uri():
     if _sandbox_enabled():
         return _sandbox_sqlite_url()
 
     url = os.getenv("DATABASE_URL")
     if url:
-        # Normalize scheme for SQLAlchemy 2.x + psycopg 3
-        if url.startswith("postgres://"):
-            url = "postgresql+psycopg://" + url[len("postgres://"):]
-        elif url.startswith("postgresql://"):
-            url = "postgresql+psycopg://" + url[len("postgresql://"):]
-        # Ensure SSL if not explicitly given
-        if "sslmode=" not in url:
-            sep = "&" if "?" in url else "?"
-            url = f"{url}{sep}sslmode=require"
-        return url
+        return normalize_database_url(url)
     # Fallback to SQLite
     return "sqlite:///drone_team.db"
 
