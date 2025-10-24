@@ -43,6 +43,9 @@ MISSING_APP_BODY_TEMPLATE = (
 )
 
 
+def unescape_newlines(s: str) -> str:
+    return s.replace("\\n", "\n")
+
 def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]:
     """Return sorted list of unique email addresses from the users table."""
 
@@ -283,9 +286,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--message",
         dest="body",
-        type=str,
+        type=unescape_newlines,
         default=None,
-        help="Provide the Message body."
+        help="Provide the Message body. use literal \\n for line breaks."
     )
     parser.add_argument(
         "--missing_applications",
@@ -456,6 +459,8 @@ def main() -> None:
                 logging.warning(
                     "Admin email requested but subject or body is missing; skipping admin email."
                 )
+                logging.warning(f"Subject: %s", admin_subject)
+                logging.warning(f"Body: %s", admin_body)
             else:
                 try:
                     success = send_admin_email(app, admin_subject, admin_body)
