@@ -46,8 +46,8 @@ MISSING_APP_BODY_TEMPLATE = (
 def unescape_newlines(s: str) -> str:
     return s.replace("\\n", "\n")
 
-def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]:
-    """Return sorted list of unique email addresses from the users table."""
+def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tuple[str, str]]:
+    """Return unique (email, username) pairs from the users table."""
 
     with app.app_context():
         init_users_db(app)
@@ -56,7 +56,7 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]
         user_columns = {column["name"] for column in inspector.get_columns("users")}
         has_callsign_column = "callsign" in user_columns
 
-        filters = ["u.email IS NOT NULL", "TRIM(u.email) <> ''"]
+        filters = ["u.email IS NOT NULL", "TRIM(u.email) <> ''", "u.username IS NOT NULL", "TRIM(u.username) <> ''"]
         params: dict[str, str] = {}
         normalized_callsigns: List[str] = []
 
@@ -93,10 +93,10 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]
             filters.append(f"LOWER(TRIM(u.callsign)) IN ({placeholders})")
             query = text(
                 f"""
-                SELECT DISTINCT u.email
+                SELECT u.username, u.email
                 FROM users u
                 WHERE {' AND '.join(filters)}
-                ORDER BY u.email
+                ORDER BY u.username
                 """
             )
         elif normalized_callsigns:
@@ -118,33 +118,42 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[str]
                     ) ranked
                     WHERE rn = 1
                 )
-                SELECT DISTINCT u.email
+                SELECT u.username, u.email
                 FROM users u
                 JOIN latest ON latest.username = u.username
                 WHERE {' AND '.join(filters)}
-                ORDER BY u.email
+                ORDER BY u.username
                 """
             )
         else:
             query = text(
                 f"""
-                SELECT DISTINCT u.email
+                SELECT u.username, u.email
                 FROM users u
                 WHERE {' AND '.join(filters)}
-                ORDER BY u.email
+                ORDER BY u.username
                 """
             )
 
         with engine.connect() as connection:
             rows = connection.execute(query, params)
-            emails: Set[str] = {
-                row.email.strip() for row in rows if getattr(row, "email", None)
-            }
-    return sorted(emails)
+            recipients: List[Tuple[str, str]] = []
+            seen: Set[str] = set()
+            for row in rows:
+                email = getattr(row, "email", None)
+                username = getattr(row, "username", None)
+                if not email or not username:
+                    continue
+                email = email.strip()
+                if not email or email in seen:
+                    continue
+                seen.add(email)
+                recipients.append((email, username))
+    return recipients
 
 
-def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> List[str]:
-    """Return sorted list of unique applicant email addresses."""
+def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> List[Tuple[str, str]]:
+    """Return unique (email, username) pairs for applicants."""
 
     with app.app_context():
         init_team_applications(app)
@@ -157,7 +166,12 @@ def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> Li
             )
             return []
 
-        filters = ["a.email IS NOT NULL", "TRIM(a.email) <> ''"]
+        filters = [
+            "a.email IS NOT NULL",
+            "TRIM(a.email) <> ''",
+            "a.username IS NOT NULL",
+            "TRIM(a.username) <> ''",
+        ]
         params: dict[str, str] = {}
         normalized_callsigns: List[str] = []
 
@@ -184,19 +198,28 @@ def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> Li
 
         query = text(
             f"""
-            SELECT DISTINCT a.email
+            SELECT a.username, a.email
             FROM team_applications a
             WHERE {' AND '.join(filters)}
-            ORDER BY a.email
+            ORDER BY a.username
             """
         )
 
         with engine.connect() as connection:
             rows = connection.execute(query, params)
-            emails: Set[str] = {
-                row.email.strip() for row in rows if getattr(row, "email", None)
-            }
-    return sorted(emails)
+            recipients: List[Tuple[str, str]] = []
+            seen: Set[str] = set()
+            for row in rows:
+                email = getattr(row, "email", None)
+                username = getattr(row, "username", None)
+                if not email or not username:
+                    continue
+                email = email.strip()
+                if not email or email in seen:
+                    continue
+                seen.add(email)
+                recipients.append((email, username))
+    return recipients
 
 
 def fetch_missing_application_users(app) -> List[Tuple[str, str]]:
@@ -340,6 +363,7 @@ def main() -> None:
     missing_applications = args.missing_applications
     applicants = args.applicants
     callsigns: List[str] | None = None
+    recipients: List[Tuple[str, str]] = []
 
     if missing_applications and applicants:
         logging.error("The --missing_applications and --applicants flags cannot be used together.")
@@ -374,21 +398,21 @@ def main() -> None:
         )
     else:
         if applicants:
-            emails = fetch_applicant_emails(app, callsigns=callsigns)
-            if not emails:
+            recipients = fetch_applicant_emails(app, callsigns=callsigns)
+            if not recipients:
                 logging.warning("No applicant email addresses found.")
                 return
             logging.info(
                 "Prepared to send message to %d applicants.",
-                len(emails),
+                len(recipients),
             )
         else:
-            emails = fetch_user_emails(app, callsigns=callsigns)
-            if not emails:
+            recipients = fetch_user_emails(app, callsigns=callsigns)
+            if not recipients:
                 logging.warning("No user email addresses found.")
                 return
 
-            logging.info("Prepared to send message to %d recipients.", len(emails))
+            logging.info("Prepared to send message to %d recipients.", len(recipients))
 
     if args.dry_run:
         if args.admin_email:
@@ -432,28 +456,47 @@ def main() -> None:
                         email,
                     )
         else:
-            for email in emails:
+            for email, username in recipients:
                 if args.dry_run:
-                    logging.info("[DRY RUN] Would send email to %s", email)
+                    logging.info(
+                        "[DRY RUN] Would send email to %s (%s)",
+                        username,
+                        email,
+                    )
                     continue
 
                 try:
-                    success = send_email(app, email, subject, body)
+                    personalized_body = body.format(username=username)
+                except (IndexError, KeyError, ValueError) as exc:
+                    logging.error(
+                        "Unable to format message body for %s (%s): %s",
+                        username,
+                        email,
+                        exc,
+                    )
+                    continue
+
+                try:
+                    success = send_email(app, email, subject, personalized_body)
                 except Exception as exc:  # pragma: no cover - defensive logging
                     logging.exception("Failed to send email to %s: %s", email, exc)
                     continue
 
                 if success:
-                    logging.info("Email sent to %s", email)
+                    logging.info("Email sent to %s (%s)", username, email)
                 else:
-                    logging.error("Failure when sending to %s", email)
+                    logging.error("Failure when sending to %s (%s)", username, email)
 
         if args.admin_email:
             admin_subject = subject
             if missing_applications:
                 admin_body = MISSING_APP_BODY_TEMPLATE.format(username="Admin")
             else:
-                admin_body = body
+                try:
+                    admin_body = body.format(username="Admin") if body else body
+                except (IndexError, KeyError, ValueError) as exc:
+                    logging.error("Unable to format admin email body: %s", exc)
+                    admin_body = None
 
             if not admin_subject or not admin_body:
                 logging.warning(
