@@ -350,6 +350,15 @@ def parse_args() -> argparse.Namespace:
             "--dry_run is enabled."
         )
     )
+    parser.add_argument(
+        "--SANDBOX_DISABLE",
+        dest="sandbox_disable",
+        action="store_true",
+        help=(
+            "Override SANDBOX_DATA_MODE and force sandbox features off even if the "
+            "environment enables them."
+        )
+    )
     return parser.parse_args()
 
 
@@ -357,6 +366,10 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     load_environment()
     args = parse_args()
+
+    if getattr(args, "sandbox_disable", False):
+        os.environ["SANDBOX_DATA_MODE"] = "false"
+
     app = create_app()
     subject = args.subject
     body = args.body
