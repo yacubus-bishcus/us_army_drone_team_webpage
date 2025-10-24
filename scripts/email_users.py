@@ -28,15 +28,17 @@ from drone_team import create_app
 from drone_team.db import get_engine, init_users_db
 from drone_team.mailer import send_email, send_admin_email
 
-MISSING_APP_SUBJECT = "Reminder: Submit Your US Army Drone Team Application"
+MISSING_APP_SUBJECT = "ONLY 6 DAYS to Compete for the US Army Drone Team: APPLY TODAY"
 MISSING_APP_BODY_TEMPLATE = (
-    "Dear {username}, You have not submitted an application yet for the US Army "
+    "Dear {username}, \n\nYou have not submitted an application yet for the US Army "
     "Drone Team. Submit an Application Using the Apply Tab on the Webpage. Once "
     "you have submitted an application the passcode to access the Velocidrone "
     "track will appear on the US Army Drone Team Tab. Please ensure the callsign "
     "submitted on the application exactly matches the callsign used on the "
-    "Velocidrone track. The track is open from 15-29 October. For questions or "
-    "concerns reach out to usarmydroneteamexecutiveoffice@gmail.com.\n\nV/r,\n\nUS Army Drone Team"
+    "Velocidrone track. The track is open from 15-29 October. If you have multiple "
+    "accounts and have applied using a different account you can ignore this email. "
+    "\n\nFor questions or concerns reach out to usarmydroneteamexecutiveoffice@gmail.com."
+    "\n\nV/r,\n\nUS Army Drone Team"
 )
 
 

@@ -150,6 +150,20 @@ def faq():
             ),
 
         },
+        {
+            "question": "Should I even log my time on the Velocidrone track if I can't beat the top twenty times?",
+            "answer": (
+                "Yes, absolutely! The Soldiers selected will be chosen based on their ability to represent the US Army as the best overall drone operators. Additionally, Soldiers that logged times during the competition will be considered as alternates for the team. Alternates may be given opportunities to train and compete for the team if primaries are unable to attend."
+            ),
+
+        },
+        {
+            "question": "How do I log the time for record on Velocidrone?",
+            "answer": (
+                "You must select Submit your time after completing the track in order for your time to be considered for the Drone Team."
+            ),
+
+        },
     ]
 
     return render_template("team_faq.html", faqs=faqs)
