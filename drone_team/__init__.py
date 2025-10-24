@@ -7,7 +7,7 @@ import os
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from .config import Config
+from .config import Config, normalize_database_url
 from .extensions import login_manager, db as sqla_db, migrate
 from .db import init_users_db, seed_admin_user, init_team_applications
 from .services.uas import create_csv_if_missing
@@ -23,6 +23,16 @@ def create_app(override=False):
         sandbox_mode = False
     else:
         sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+
+    # Ensure downstream code sees the effective sandbox state
+    app.config["SANDBOX_DATA_MODE"] = sandbox_mode
+
+    if sandbox_mode:
+        app.config["SQLALCHEMY_DATABASE_URI"] = app.config["SANDBOX_SQLITE_URL"]
+    else:
+        db_url_env = os.getenv("DATABASE_URL")
+        if db_url_env:
+            app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(db_url_env)
 
     if sandbox_mode:
         app.logger.info("SANDBOX_DATA_MODE enabled; routing database work to SQLite and skipping external sinks")
