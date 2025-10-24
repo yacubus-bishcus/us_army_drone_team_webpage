@@ -362,15 +362,6 @@ def parse_args() -> argparse.Namespace:
             "environment enables them."
         )
     )
-    parser.add_argument(
-        "--SANDBOX_DISABLE",
-        dest="sandbox_disable",
-        action="store_true",
-        help=(
-            "Override SANDBOX_DATA_MODE and force sandbox features off even if the "
-            "environment enables them."
-        )
-    )
     return parser.parse_args()
 
 
