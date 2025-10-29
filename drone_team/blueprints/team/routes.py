@@ -1,7 +1,5 @@
 #/drone_team/blueprints/team/routes.py
 import uuid, os, threading
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from flask import render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
@@ -10,7 +8,11 @@ from . import team_bp
 from ...services import team as svc
 from ...services import sheets as sheets_svc
 from drone_team import mailer
-from ...db import insert_team_application, get_latest_team_application_by_username
+from ...db import (
+    insert_team_application,
+    get_latest_team_application_by_username,
+    update_user_newsletter,
+)
 
 def _async_send(app, to, subject, body):
     # Ensure app context for logging / config
@@ -26,15 +28,6 @@ def _async_send_sendgrid(app, to, subject, body):
             app.logger.error("SendGrid mail failed (returned False).")
 
 # --- LANDING PAGE ("/") ---
-_PASSCODE_RELEASE = datetime(2025, 10, 15, 9, 0, tzinfo=ZoneInfo("America/New_York"))
-
-
-def _is_passcode_released(now: datetime | None = None) -> bool:
-    tz = ZoneInfo("America/New_York")
-    current = now.astimezone(tz) if now else datetime.now(tz)
-    return current >= _PASSCODE_RELEASE
-
-
 def _get_user_callsign(app, user) -> str:
     if not getattr(user, "is_authenticated", False):
         return ""
@@ -84,13 +77,7 @@ def index():
 
     user_callsign = _get_user_callsign(current_app, current_user)
 
-    passcode_released = _is_passcode_released()
-    velocidrone_passcode = ""
-    if passcode_released:
-        try:
-            velocidrone_passcode = os.environ.get('VELOCIDRONE_PASSCODE', "PASSCODE Unavailable")
-        except:
-            current_app.logger.error("Velocidrone passcode unavailable.")
+    newsletter_subscribed = bool(getattr(current_user, "newsletter_opt_in", False))
 
     return render_template(
         "team_index.html",
@@ -100,9 +87,26 @@ def index():
         cal_id=cal_id,
         tz=tz,
         user_callsign=user_callsign,
-        passcode_released=passcode_released,
-        velocidrone_passcode=velocidrone_passcode,
+        newsletter_subscribed=newsletter_subscribed,
     )
+
+
+@team_bp.route("/newsletter/subscribe", methods=["GET"])
+@login_required
+def subscribe_newsletter():
+    try:
+        update_user_newsletter(current_app, current_user.id, True)
+        current_user.newsletter_opt_in = True
+        flash("You are now subscribed to the newsletter distribution.", "success")
+    except Exception as exc:
+        current_app.logger.exception(
+            "Failed to subscribe user %s to newsletter: %s", current_user.id, exc
+        )
+        flash(
+            "We couldn't update your newsletter preference right now. Please try again later.",
+            "error",
+        )
+    return redirect(url_for("team.index"))
 
     
 # --- FULL CALENDAR PAGE ---

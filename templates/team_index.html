@@ -384,29 +384,19 @@
         <div class="col-right">
           <section class="card">
             <h2 style="margin-top:0">Velocidrone Secure Access</h2>
-            <p class="meta" style="margin:.5rem 0 1rem 0;">
-              {% if user_callsign %}
-                Do not share the Velocidrone Passcode with anyone. Access to the track is reserved for Army Service Members only.
-              {% else %}
-                You must first apply with your callsign in order to access the Velocidrone track.
-              {% endif %}
-            </p>
+            {% if newsletter_subscribed %}
+              <p class="meta" style="margin:.5rem 0 1rem 0;">
+                Competition on the Velocidrone Track is now closed. The track will remain available for those that wish to practice for the next recruitment in April 2026. Thank you for subscribing to the US Army Drone Team Newsletter Distribution.
+              </p>
+            {% else %}
+              <p class="meta" style="margin:.5rem 0 1rem 0;">
+                Competition on the Velocidrone Track is now closed. The track will remain available for those that wish to practice for the next recruitment in April 2026. If you'd like to continue to follow the US Army Drone Team sign up to our Newsletter Distribution <a href="{{ url_for('team.subscribe_newsletter') }}">here</a>.
+              </p>
+            {% endif %}
             {% if user_callsign %}
               <div style="display:flex;flex-direction:column;gap:.5rem;">
                 <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
                 <strong>{{ user_callsign }}</strong>
-              </div>
-              <div class="actions" style="margin-top:1rem;">
-                {% if passcode_released %}
-                  {% if velocidrone_passcode %}
-                    <p class="meta" style="margin:0;">Velocidrone competition passcode:</p>
-                    <strong>{{ velocidrone_passcode }}</strong>
-                  {% else %}
-                    <p class="meta" style="margin:0;">Velocidrone passcode is currently unavailable. Please contact the team administrator.</p>
-                  {% endif %}
-                {% else %}
-                  <p class="meta" style="margin:0;">The passcode will be distributed NET 0900 EST 15 October 2025.</p>
-                {% endif %}
               </div>
             {% else %}
               <div class="actions" style="margin-top:1rem;">
