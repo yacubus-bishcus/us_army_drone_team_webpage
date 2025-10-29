@@ -7,21 +7,37 @@ import os
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from .config import Config
+from .config import Config, normalize_database_url
 from .extensions import login_manager, db as sqla_db, migrate
 from .db import init_users_db, seed_admin_user, init_team_applications
 from .services.uas import create_csv_if_missing
 from .services.aars import create_aar_csv_if_missing, normalize_aar_csv_formats
 from .cli import register_cli
 
-def create_app():
+def create_app(override=False):
     load_dotenv()
     app = Flask(__name__, template_folder="../templates", static_folder="../static")
     app.config.from_object(Config)
 
-    sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+    if override:
+        sandbox_mode = False
+    else:
+        sandbox_mode = app.config.get("SANDBOX_DATA_MODE", False)
+
+    # Ensure downstream code sees the effective sandbox state
+    app.config["SANDBOX_DATA_MODE"] = sandbox_mode
+
+    if sandbox_mode:
+        app.config["SQLALCHEMY_DATABASE_URI"] = app.config["SANDBOX_SQLITE_URL"]
+    else:
+        db_url_env = os.getenv("DATABASE_URL")
+        if db_url_env:
+            app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(db_url_env)
+
     if sandbox_mode:
         app.logger.info("SANDBOX_DATA_MODE enabled; routing database work to SQLite and skipping external sinks")
+    else:
+        app.logger.info("SANDBOX_DATA_MODE disabled; routing production database")
 
     # ★ Prefer DATABASE_URL (Postgres) if provided and sandbox mode is off; otherwise keep SQLite behavior
     db_url_env = os.getenv("DATABASE_URL")
@@ -126,6 +142,7 @@ def create_app():
             "team.apply",
             "team.calendar",
             "team.faq",
+            "team.subscribe_newsletter",
             "core.license_page",
             "core.license_document",
             "core.disclaimer_page",

@@ -19,6 +19,7 @@ class User(UserMixin):
         role="user",
         must_change_password=False,
         email: str | None = None,
+        newsletter_opt_in: bool = False,
     ):
         self.id = id
         self.username = username
@@ -26,6 +27,7 @@ class User(UserMixin):
         self.role = role
         self.must_change_password = must_change_password
         self.email = email
+        self.newsletter_opt_in = bool(newsletter_opt_in)
 
 # --------------------
 # Engine factory
@@ -115,7 +117,8 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 email TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                must_change_password INTEGER NOT NULL DEFAULT 0
+                must_change_password INTEGER NOT NULL DEFAULT 0,
+                newsletter INTEGER NOT NULL DEFAULT 0
             )
             """
         else:
@@ -128,7 +131,8 @@ def _ddl_for(engine: Engine, table: str) -> str:
                 email VARCHAR(255),
                 role VARCHAR(64) NOT NULL DEFAULT 'user',
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                must_change_password BOOLEAN NOT NULL DEFAULT FALSE
+                must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+                newsletter BOOLEAN NOT NULL DEFAULT FALSE
             )
             """
     elif table == "pending_users":
@@ -209,6 +213,12 @@ def init_users_db(app):
             column_def = "TEXT"
         with engine.begin() as con:
             con.execute(text(f"ALTER TABLE users ADD COLUMN email {column_def}"))
+    if "newsletter" not in user_columns:
+        column_def = "BOOLEAN NOT NULL DEFAULT FALSE"
+        if engine.dialect.name == "sqlite":
+            column_def = "INTEGER NOT NULL DEFAULT 0"
+        with engine.begin() as con:
+            con.execute(text(f"ALTER TABLE users ADD COLUMN newsletter {column_def}"))
 
 def init_team_applications(app):
     engine = get_engine(app)
@@ -309,12 +319,13 @@ def _row_to_user(row) -> User | None:
         getattr(row, "role", "user"),
         bool(getattr(row, "must_change_password", False)),
         getattr(row, "email", None),
+        bool(getattr(row, "newsletter", False)),
     )
 
 def get_user_by_username(app, username: str) -> User | None:
     engine = get_engine(app)
     sql = text(
-        "SELECT id, username, password_hash, role, must_change_password, email "
+        "SELECT id, username, password_hash, role, must_change_password, email, newsletter "
         "FROM users WHERE username = :u LIMIT 1"
     )
     with engine.connect() as con:
@@ -324,7 +335,7 @@ def get_user_by_username(app, username: str) -> User | None:
 def get_user_by_id(app, uid: int) -> User | None:
     engine = get_engine(app)
     sql = text(
-        "SELECT id, username, password_hash, role, must_change_password, email "
+        "SELECT id, username, password_hash, role, must_change_password, email, newsletter "
         "FROM users WHERE id = :i LIMIT 1"
     )
     with engine.connect() as con:
@@ -334,7 +345,7 @@ def get_user_by_id(app, uid: int) -> User | None:
 def get_user_by_email(app, email: str) -> User | None:
     engine = get_engine(app)
     sql = text(
-        "SELECT id, username, password_hash, role, must_change_password, email "
+        "SELECT id, username, password_hash, role, must_change_password, email, newsletter "
         "FROM users WHERE lower(email) = lower(:e) LIMIT 1"
     )
     with engine.connect() as con:
@@ -361,7 +372,7 @@ def create_user(
     sql = text("""
         INSERT INTO users (username, password_hash, role, created_at, must_change_password, email)
         VALUES (:u, :p, :r, CURRENT_TIMESTAMP, :m, :e)
-        RETURNING id, username, password_hash, role, must_change_password, email
+        RETURNING id, username, password_hash, role, must_change_password, email, newsletter
     """)
     # SQLite before 3.35 doesn't support RETURNING. We fallback if needed.
     with engine.begin() as con:
@@ -394,6 +405,20 @@ def create_user(
                 },
             )
     return get_user_by_username(app, username)
+
+
+def update_user_newsletter(app, user_id: int, subscribed: bool) -> None:
+    engine = get_engine(app)
+    value = bool(subscribed)
+    if engine.dialect.name == "sqlite":
+        store_value = int(value)
+    else:
+        store_value = value
+    with engine.begin() as con:
+        con.execute(
+            text("UPDATE users SET newsletter = :n WHERE id = :i"),
+            {"n": store_value, "i": user_id},
+        )
 
 def seed_admin_user(app):
     admin_username = app.config["ADMIN_USERNAME"]

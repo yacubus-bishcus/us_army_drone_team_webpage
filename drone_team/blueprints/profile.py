@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from werkzeug.security import check_password_hash
-from ..db import update_user_password
+from ..db import update_user_password, update_user_newsletter
 from ..services import aars as aars_svc
 
 bp = Blueprint("profile", __name__)
@@ -21,7 +21,46 @@ def view():
     if "username" in df.columns:
         my_count = int((df["username"].astype(str) == current_user.username).sum())
 
+    newsletter_subscribed = bool(getattr(current_user, "newsletter_opt_in", False))
+
     if request.method == "POST":
+        form_name = request.form.get("form_name", "change_password")
+
+        if form_name == "unsubscribe_newsletter":
+            if not newsletter_subscribed:
+                return redirect(
+                    url_for(
+                        "profile.view",
+                        message="You are already unsubscribed from the newsletter distribution.",
+                    )
+                )
+
+            try:
+                update_user_newsletter(current_app, current_user.id, False)
+                current_user.newsletter_opt_in = False
+            except Exception as exc:
+                current_app.logger.exception(
+                    "Failed to unsubscribe user %s from newsletter: %s",
+                    current_user.id,
+                    exc,
+                )
+                return redirect(
+                    url_for(
+                        "profile.view",
+                        error=(
+                            "We couldn't update your newsletter preference right now. "
+                            "Please try again later."
+                        ),
+                    )
+                )
+
+            return redirect(
+                url_for(
+                    "profile.view",
+                    message="You have been removed from the newsletter distribution.",
+                )
+            )
+
         # Change password flow
         curr = request.form.get("current_password", "") or ""
         new  = request.form.get("new_password", "") or ""
@@ -61,4 +100,5 @@ def view():
         username=current_user.username,
         my_aar_count=my_count,
         force_password_change=force_change,
+        newsletter_subscribed=newsletter_subscribed,
     )

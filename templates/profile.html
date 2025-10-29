@@ -56,6 +56,7 @@
           </p>
         {% endif %}
         <form method="POST" action="{{ url_for('profile.view') }}">
+          <input type="hidden" name="form_name" value="change_password" />
           <div>
             <label for="current_password">Current password</label>
             <input id="current_password" name="current_password" type="password" required />
@@ -82,6 +83,19 @@
           <a class="btn" href="{{ url_for('recommendations.submit') }}">Submit Recommendations</a>
         </p>
         <p class="meta">Submit general recommendations or updates to UAS specifications here.</p>
+
+        <hr style="border:none; border-top:1px solid var(--muted); margin:1.25rem 0;" />
+        <h3 style="margin-top:0;">Newsletter Preferences</h3>
+        {% if newsletter_subscribed %}
+          <p class="meta">You are currently subscribed to the newsletter distribution.</p>
+          <form method="POST" action="{{ url_for('profile.view') }}">
+            <input type="hidden" name="form_name" value="unsubscribe_newsletter" />
+            <button class="btn" type="submit">Unsubscribe from Newsletter</button>
+          </form>
+        {% else %}
+          <p class="meta">You are not subscribed to the newsletter distribution.</p>
+          <p class="meta">Visit the <a href="{{ url_for('team.index') }}">Team page</a> if you would like to subscribe.</p>
+        {% endif %}
       </div>
     </div>
   </div>
