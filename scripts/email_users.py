@@ -49,8 +49,14 @@ MISSING_APP_BODY_TEMPLATE = (
 def unescape_newlines(s: str) -> str:
     return s.replace("\\n", "\n")
 
-def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tuple[str, str]]:
-    """Return unique (email, username) pairs from the users table."""
+def fetch_user_emails(
+    app, *, callsigns: Iterable[str] | None = None
+) -> Tuple[List[Tuple[str, str]], Set[str]]:
+    """Return unique (email, username) pairs from the users table.
+
+    When callsigns are provided the second item in the returned tuple contains the
+    normalized callsigns that matched at least one user record.
+    """
 
     with app.app_context():
         init_users_db(app)
@@ -75,7 +81,7 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tupl
                     "Unable to filter by callsign because the team_applications table "
                     "is missing. Returning no recipients."
                 )
-                return []
+                return [], set()
 
         if normalized_callsigns:
             placeholders = ", ".join(
@@ -90,13 +96,16 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tupl
 
         elif callsigns is not None:
             # An explicit but empty list of callsigns means no recipients.
-            return []
+            return [], set()
 
         if normalized_callsigns and has_callsign_column:
             filters.append(f"LOWER(TRIM(u.callsign)) IN ({placeholders})")
             query = text(
                 f"""
-                SELECT u.username, u.email
+                SELECT
+                    u.username,
+                    u.email,
+                    LOWER(TRIM(u.callsign)) AS matched_callsign
                 FROM users u
                 WHERE {' AND '.join(filters)}
                 ORDER BY u.username
@@ -121,7 +130,10 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tupl
                     ) ranked
                     WHERE rn = 1
                 )
-                SELECT u.username, u.email
+                SELECT
+                    u.username,
+                    u.email,
+                    LOWER(TRIM(latest.callsign)) AS matched_callsign
                 FROM users u
                 JOIN latest ON latest.username = u.username
                 WHERE {' AND '.join(filters)}
@@ -142,6 +154,7 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tupl
             rows = connection.execute(query, params)
             recipients: List[Tuple[str, str]] = []
             seen: Set[str] = set()
+            matched_callsigns: Set[str] = set()
             for row in rows:
                 email = getattr(row, "email", None)
                 username = getattr(row, "username", None)
@@ -152,11 +165,20 @@ def fetch_user_emails(app, *, callsigns: Iterable[str] | None=None) -> List[Tupl
                     continue
                 seen.add(email)
                 recipients.append((email, username))
-    return recipients
+                matched = getattr(row, "matched_callsign", None)
+                if matched:
+                    matched_callsigns.add(str(matched).strip().lower())
+    return recipients, matched_callsigns
 
 
-def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> List[Tuple[str, str]]:
-    """Return unique (email, username) pairs for applicants."""
+def fetch_applicant_emails(
+    app, *, callsigns: Iterable[str] | None = None
+) -> Tuple[List[Tuple[str, str]], Set[str]]:
+    """Return unique (email, username) pairs for applicants.
+
+    When callsigns are provided the second item in the returned tuple contains the
+    normalized callsigns that matched at least one application.
+    """
 
     with app.app_context():
         init_team_applications(app)
@@ -167,7 +189,7 @@ def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> Li
             logging.warning(
                 "Unable to load applicant emails because the team_applications table is missing."
             )
-            return []
+            return [], set()
 
         filters = [
             "a.email IS NOT NULL",
@@ -197,11 +219,14 @@ def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> Li
 
         elif callsigns is not None:
             # An explicit but empty list of callsigns means no recipients.
-            return []
+            return [], set()
 
         query = text(
             f"""
-            SELECT a.username, a.email
+            SELECT
+                a.username,
+                a.email,
+                LOWER(TRIM(a.callsign)) AS matched_callsign
             FROM team_applications a
             WHERE {' AND '.join(filters)}
             ORDER BY a.username
@@ -212,6 +237,7 @@ def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> Li
             rows = connection.execute(query, params)
             recipients: List[Tuple[str, str]] = []
             seen: Set[str] = set()
+            matched_callsigns: Set[str] = set()
             for row in rows:
                 email = getattr(row, "email", None)
                 username = getattr(row, "username", None)
@@ -222,7 +248,10 @@ def fetch_applicant_emails(app, *, callsigns: Iterable[str] | None = None) -> Li
                     continue
                 seen.add(email)
                 recipients.append((email, username))
-    return recipients
+                matched = getattr(row, "matched_callsign", None)
+                if matched:
+                    matched_callsigns.add(str(matched).strip().lower())
+    return recipients, matched_callsigns
 
 
 def fetch_missing_application_users(app) -> List[Tuple[str, str]]:
@@ -380,7 +409,9 @@ def main() -> None:
     missing_applications = args.missing_applications
     applicants = args.applicants
     callsigns: List[str] | None = None
+    callsign_pairs: List[Tuple[str, str]] = []
     recipients: List[Tuple[str, str]] = []
+    matched_callsigns: Set[str] = set()
 
     if missing_applications and applicants:
         logging.error("The --missing_applications and --applicants flags cannot be used together.")
@@ -396,7 +427,14 @@ def main() -> None:
         if not callsigns:
             logging.warning("No callsigns found in file %s", args.callsigns_file)
             return 
-        logging.info("Restricting email recipients to %d callsigns listed in %s", len(callsigns), args.callsigns_file,)
+        logging.info(
+            "Restricting email recipients to %d callsigns listed in %s",
+            len(callsigns),
+            args.callsigns_file,
+        )
+        callsign_pairs = [
+            (callsign, callsign.strip().lower()) for callsign in callsigns if callsign.strip()
+        ]
 
     if not args.dry_run and not missing_applications:
         if not subject or not body:
@@ -415,7 +453,21 @@ def main() -> None:
         )
     else:
         if applicants:
-            recipients = fetch_applicant_emails(app, callsigns=callsigns)
+            recipients, matched_callsigns = fetch_applicant_emails(app, callsigns=callsigns)
+            unmatched_callsigns: List[str] = []
+            if callsign_pairs:
+                seen_normals: Set[str] = set()
+                for original, normalized in callsign_pairs:
+                    if not normalized or normalized in seen_normals:
+                        continue
+                    seen_normals.add(normalized)
+                    if normalized not in matched_callsigns:
+                        unmatched_callsigns.append(original)
+            if unmatched_callsigns:
+                logging.warning(
+                    "Usernames not found for callsigns: %s",
+                    ", ".join(unmatched_callsigns),
+                )
             if not recipients:
                 logging.warning("No applicant email addresses found.")
                 return
@@ -424,7 +476,21 @@ def main() -> None:
                 len(recipients),
             )
         else:
-            recipients = fetch_user_emails(app, callsigns=callsigns)
+            recipients, matched_callsigns = fetch_user_emails(app, callsigns=callsigns)
+            unmatched_callsigns: List[str] = []
+            if callsign_pairs:
+                seen_normals: Set[str] = set()
+                for original, normalized in callsign_pairs:
+                    if not normalized or normalized in seen_normals:
+                        continue
+                    seen_normals.add(normalized)
+                    if normalized not in matched_callsigns:
+                        unmatched_callsigns.append(original)
+            if unmatched_callsigns:
+                logging.warning(
+                    "Usernames not found for callsigns: %s",
+                    ", ".join(unmatched_callsigns),
+                )
             if not recipients:
                 logging.warning("No user email addresses found.")
                 return
