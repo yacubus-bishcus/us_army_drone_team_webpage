@@ -56,7 +56,7 @@ def index():
         "and operational dominance in modern warfare through national and international competitions. "
         "By recruiting and training the next generation of drone operators, the Army Drone Team advances "
         "tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. "
-        "Apply now below to receive instructions on the Velocidrone closed track competition. Track password will be distributed no earlier than 15 October 2025."
+        "The Velocidrone Competition Track is now closed. Official results will be announced NLT 5 November 2025."
         ' The official team SharePoint page can be found '
         '<a href="https://armyeitaas.sharepoint-mil.us/:u:/t/USArmyGoldenHawks/EZDhwGB7X9pNnu3rUfrio30BHdELBnK-iSsySi7YV4RwoQ?e=Sbwk9y" target="_blank">here</a>.'
     )
@@ -66,10 +66,7 @@ def index():
         "NCOIC": ["SSG Smith"]
     }
 
-    operators = [
-        "SFC Aaron Teran", "Tyler Booth", "SGT Cantu",
-        "CPT Ryan Johnson", "SSG Brandon Schiller", "SSG Stephen Ringsmuth", "SGT Jacob Loyd"
-    ]
+    operators = ["New Team Members Will Be Announced NLT 05 November 2025"]
 
     # Pass calendar config to the template for the iframe embed
     cal_id = current_app.config.get("GOOGLE_CALENDAR_ID", "").strip()
@@ -114,7 +111,7 @@ def subscribe_newsletter():
 @login_required
 def calendar():
     cal_id = current_app.config.get("GOOGLE_CALENDAR_ID", "").strip()
-    tz = current_app.config.get("TIMEZONE", "America/New_York").strip()
+    tz = current_app.config.get("TIMEZONE", "America/Chicago").strip()
     return render_template("team_calendar.html", cal_id=cal_id, tz=tz)
 
 

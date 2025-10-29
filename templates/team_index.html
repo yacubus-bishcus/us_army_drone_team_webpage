@@ -3,7 +3,7 @@
 {% block body_attrs %} class="team-page"{% endblock %}
 {% block content %}
 <style>
-  body.team-page{
+  body.team-page {
     position: relative;
     min-height: 100vh;
     margin: 0;
@@ -16,7 +16,7 @@
   }
 
   body.team-page::before,
-  body.team-page::after{
+  body.team-page::after {
     content: "";
     position: fixed;
     inset: 0;
@@ -24,7 +24,7 @@
     z-index: -1;
   }
 
-  body.team-page::before{
+  body.team-page::before {
     background-image:
       linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
       linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
@@ -32,7 +32,7 @@
     opacity: .45;
   }
 
-  body.team-page::after{
+  body.team-page::after {
     background:
       radial-gradient(circle at 18% 22%, rgba(148, 163, 184, 0.28), transparent 55%),
       radial-gradient(circle at 82% 76%, rgba(30, 64, 175, 0.22), transparent 60%);
@@ -40,44 +40,44 @@
     opacity: .35;
   }
 
-  body.team-page .site-main{
+  body.team-page .site-main {
     position: relative;
     max-width: none;
     width: 100%;
     padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(3rem, 6vw, 5rem);
   }
 
-  body.team-page .container{
+  body.team-page .container {
     width: min(1680px, 92%);
     margin: 0 auto;
   }
 
   body.team-page h1,
   body.team-page h2,
-  body.team-page h3{
+  body.team-page h3 {
     color: #f8fafc;
   }
 
   body.team-page p,
   body.team-page li,
-  body.team-page .meta{
+  body.team-page .meta {
     color: rgba(226, 232, 240, 0.88);
   }
 
-  body.team-page strong{
+  body.team-page strong {
     color: #f8fafc;
   }
 
-  body.team-page a{
+  body.team-page a {
     color: #38bdf8;
     transition: color .2s ease;
   }
 
-  body.team-page a:hover{
+  body.team-page a:hover {
     color: #7dd3fc;
   }
 
-  body.team-page .card{
+  body.team-page .card {
     background: rgba(15, 23, 42, 0.76);
     border: 1px solid rgba(148, 163, 184, 0.22);
     border-radius: 16px;
@@ -85,192 +85,250 @@
     backdrop-filter: blur(12px);
   }
 
-  body.team-page .hero{
+  body.team-page .hero {
     gap: 1rem;
   }
 
-  body.team-page .hero h1{
+  body.team-page .hero h1 {
     font-size: clamp(2.25rem, 3vw + 1.2rem, 3rem);
     letter-spacing: .01em;
   }
 
-  body.team-page .actions .btn{
+  body.team-page .actions .btn {
     border-color: rgba(148, 163, 184, 0.35);
     color: #e2e8f0;
   }
 
-  body.team-page .actions .btn:not(.btn--primary){
+  body.team-page .actions .btn:not(.btn--primary) {
     background: rgba(15, 23, 42, 0.55);
   }
 
-  body.team-page .btn--primary{
+  body.team-page .btn--primary {
     background: linear-gradient(135deg, #10b981, #059669);
     box-shadow: 0 16px 32px -18px rgba(16, 185, 129, 0.65);
   }
 
-  body.team-page .btn--primary:hover{
+  body.team-page .btn--primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 20px 34px -20px rgba(16, 185, 129, 0.8);
   }
 
-  body.team-page .btn--ghost{
+  body.team-page .btn--ghost {
     background: transparent;
     color: #cbd5f5;
   }
 
-  body.team-page .btn--ghost:hover{
+  body.team-page .btn--ghost:hover {
     background: rgba(148, 163, 184, 0.12);
   }
 
-  body.team-page .three-col{
+  body.team-page .three-col {
     gap: 1.5rem;
   }
 
-  body.team-page .org .tier{
+  body.team-page .org .tier {
     background: rgba(15, 23, 42, 0.68);
     border-color: rgba(148, 163, 184, 0.28);
   }
 
-  body.team-page .chip{
+  body.team-page .chip {
     background: rgba(30, 41, 59, 0.72);
     border-color: rgba(148, 163, 184, 0.38);
     color: #f1f5f9;
   }
 
-  body.team-page .media-stack .video{
+  body.team-page .media-stack .video {
     border: 1px solid rgba(148, 163, 184, 0.25);
     box-shadow: 0 22px 38px -24px rgba(15, 23, 42, 0.8);
     background: rgba(2, 6, 23, 0.92);
   }
 
-  :root{
-    --nav-height: 56px;     /* adjust if your top nav height differs */
-    --sticky-gap: 12px;     /* space under the nav before sticky panels start */
+  :root {
+    --nav-height: 56px;
+    /* adjust if your top nav height differs */
+    --sticky-gap: 12px;
+    /* space under the nav before sticky panels start */
   }
 
   /* Page container for THIS Team page only */
-  .container{
-    width: min(1600px, 96%);   /* allow wider page */
+  .container {
+    width: min(1600px, 96%);
+    /* allow wider page */
     margin: 2rem auto;
   }
 
   /* Generic utilities still used on this page */
-  .grid{ display:grid; gap:1rem; }
-  .card{ background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:1rem; }
-  .hero{ display:grid; gap:.75rem; }
-  .hero h1{ margin:.25rem 0; }
-  .actions{ display:flex; gap:.5rem; flex-wrap:wrap; }
-  .btn{ padding:10px 14px; border:1px solid var(--border-strong); background:var(--muted); 
-    border-radius:var(--radius); cursor:pointer; text-decoration:none; color:inherit; 
-    display:inline-flex; align-items:center; gap:.35rem; }
-  .btn:hover{ filter:brightness(.97); }
+  .grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+
+  .hero {
+    display: grid;
+    gap: .75rem;
+  }
+
+  .hero h1 {
+    margin: .25rem 0;
+  }
+
+  .actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    border: 1px solid var(--border-strong);
+    background: var(--muted);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+  }
+
+  .btn:hover {
+    filter: brightness(.97);
+  }
 
   /* --- Three-column layout (left = events, center = flyer, right = roster) --- */
-  .three-col{
-    display:grid;
+  .three-col {
+    display: grid;
     /* Make sides wider and center thinner */
     grid-template-columns: 2fr minmax(320px, 560px) 2fr;
     gap: 1.25rem;
     align-items: start;
   }
-  .col-left, .col-center, .col-right{ display:grid; gap:1rem; }
+
+  .col-left,
+  .col-center,
+  .col-right {
+    display: grid;
+    gap: 1rem;
+  }
+
   /* Center flyer */
-  .team-flyer{ display:grid; place-items:center; }
-  .team-flyer__img{
-    width:100%;
-    max-width:560px;   /* matches center max width */
-    height:auto;
-    border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+  .team-flyer {
+    display: grid;
+    place-items: center;
   }
+
+  .team-flyer__img {
+    width: 100%;
+    max-width: 560px;
+    /* matches center max width */
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  }
+
   /* Center column media stack */
-  .media-stack{ display:grid; gap:1rem; place-items:center; }
-
-  .info-card{
-    width:100%;
-    max-width:560px;
-    padding:2rem;
-    background:linear-gradient(135deg, rgba(17, 25, 40, 0.92), rgba(10, 12, 16, 0.86));
-    color:#f5f7fa;
-    border-radius:16px;
-    box-shadow:0 18px 32px -12px rgba(15, 23, 42, 0.4);
-    border:1px solid rgba(148, 163, 184, 0.25);
-    display:grid;
-    gap:1.5rem;
+  .media-stack {
+    display: grid;
+    gap: 1rem;
+    place-items: center;
   }
 
-  .info-card h2{
-    margin:0;
-    font-size:1.8rem;
-    font-weight:700;
-    letter-spacing:.01em;
+  .info-card {
+    width: 100%;
+    max-width: 560px;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(17, 25, 40, 0.92), rgba(10, 12, 16, 0.86));
+    color: #f5f7fa;
+    border-radius: 16px;
+    box-shadow: 0 18px 32px -12px rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    display: grid;
+    gap: 1.5rem;
   }
 
-  .info-section{
-    display:grid;
-    gap:.35rem;
+  .info-card h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: .01em;
   }
 
-  .info-section h3{
-    margin:0;
-    font-size:1rem;
-    text-transform:uppercase;
-    letter-spacing:.12em;
-    color:rgba(226, 232, 240, 0.85);
+  .info-section {
+    display: grid;
+    gap: .35rem;
   }
 
-  .info-section p{
-    margin:0;
-    font-size:1rem;
-    line-height:1.6;
-    color:rgba(226, 232, 240, 0.88);
+  .info-section h3 {
+    margin: 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: rgba(226, 232, 240, 0.85);
   }
 
-  .btn--primary{
-    background:linear-gradient(135deg, #1f9d55, #15803d);
-    color:#fff;
-    border:none;
-    font-weight:600;
-    transition:transform .2s ease, box-shadow .2s ease;
+  .info-section p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(226, 232, 240, 0.88);
   }
 
-  .btn--primary:hover{
-    transform:translateY(-1px);
-    box-shadow:0 10px 18px -12px rgba(21, 128, 61, .8);
+  .btn--primary {
+    background: linear-gradient(135deg, #1f9d55, #15803d);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    transition: transform .2s ease, box-shadow .2s ease;
   }
 
-  .btn--ghost{
-    background:transparent;
-    border-color:rgba(148, 163, 184, 0.6);
-    color:#0f172a;
-    font-weight:600;
+  .btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px -12px rgba(21, 128, 61, .8);
   }
 
-  .btn--ghost:hover{
-    background:rgba(148, 163, 184, 0.1);
+  .btn--ghost {
+    background: transparent;
+    border-color: rgba(148, 163, 184, 0.6);
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .btn--ghost:hover {
+    background: rgba(148, 163, 184, 0.1);
   }
 
   /* Make video responsive, with a clean 16:9 box */
   .media-stack .video {
     width: 100%;
-    max-width: 560px;         /* matches your center max width */
-    aspect-ratio: 16 / 9;     /* keeps proper shape */
+    max-width: 560px;
+    /* matches your center max width */
+    aspect-ratio: 16 / 9;
+    /* keeps proper shape */
     height: auto;
-    border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
-    background:#000;          /* looks nice before load */
-    overflow:hidden;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    background: #000;
+    /* looks nice before load */
+    overflow: hidden;
   }
 
   /* Ensure <video> fills the box nicely */
-  .media-stack .video video{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
+  .media-stack .video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
+
   /* Sticky side panels */
-  .sticky{
+  .sticky {
     position: sticky;
     top: calc(var(--nav-height) + var(--sticky-gap));
     align-self: start;
@@ -280,177 +338,220 @@
   }
 
   /* Org / roster chips */
-  .org{ display:grid; gap:.5rem; }
-  .org .tier{ border:1px solid var(--border); border-radius:12px; padding:.75rem; background:#fafafa; }
-  .org .tier h3{ margin:.1rem 0 .35rem 0; font-size:1rem; }
-  .chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
-  .chip{ background:#fff; border:1px solid var(--border); border-radius:999px; padding:.25rem .6rem; }
+  .org {
+    display: grid;
+    gap: .5rem;
+  }
+
+  .org .tier {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .75rem;
+    background: #fafafa;
+  }
+
+  .org .tier h3 {
+    margin: .1rem 0 .35rem 0;
+    font-size: 1rem;
+  }
+
+  .chips {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .25rem .6rem;
+  }
 
   /* Responsive: stack on narrow screens */
-  @media (max-width: 980px){
-    .three-col{ grid-template-columns: 1fr; }
-    .col-center{ order:1; }
-    .col-left{ order:2; }
-    .col-right{ order:3; }
-    .sticky{ position: static; max-height: none; overflow: visible; }
+  @media (max-width: 980px) {
+    .three-col {
+      grid-template-columns: 1fr;
+    }
+
+    .col-center {
+      order: 1;
+    }
+
+    .col-left {
+      order: 2;
+    }
+
+    .col-right {
+      order: 3;
+    }
+
+    .sticky {
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
   }
 </style>
 
 
-  <div class="container grid">
-    <!-- Hero / Summary -->
-    <section class="card hero">
-      <h1>US Army Drone Team</h1>
-      <p>{{ summary|safe }}</p>
-      <div class="actions">
-        <a class="btn" href="{{ url_for('team.apply') }}">Apply Now</a>
-        <a class="btn" href="{{ url_for('team.calendar') }}">View Full Calendar</a>
-      </div>
-    </section>
-    
-      <div class="three-col">
-        <!-- LEFT: Upcoming Events -->
-        <div class="col-left">
-          <section class="card sticky">
-            <h2 style="margin-top:0">Upcoming Events</h2>
-            {% if cal_id %}
-              <iframe
-                src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showCalendars=0&showTabs=0&showPrint=0&showDate=0&wkst=1&src={{ cal_id | urlencode }}&ctz={{ tz | urlencode }}"
-                style="border:0" width="100%" height="300" frameborder="0" scrolling="no">
-              </iframe>
-              <p style="margin:.5rem 0 0 0">
-                Need more? <a href="{{ url_for('team.calendar') }}">Open the full calendar</a>.
-              </p>
-            {% else %}
-              <p class="meta">Calendar not configured.</p>
-            {% endif %}
-          </section>
-          <section class="card">
-            <h2 style="margin-top:0">Velocidrone Instructions</h2>
-            <p style="margin-bottom:0">
-              <a href="{{ url_for('static', filename='docs/velocidrone_recruitment_instructions_v2.pdf') }}" target="_blank" rel="noopener">
-                Download the Velocidrone racetrack instructions (PDF)
-              </a>
-            </p>
-          </section>
-        </div>
-      
-      <!-- CENTER: Video above Flyer -->
-      <div class="col-center">
-        <section class="card team-flyer">
-          <div class="media-stack">
-            <!-- Video -->
-            <div class="video">
-              <video
-                controls
-                preload="metadata"
-                autoplay muted loop controls playsinline
-                poster="{{ url_for('static', filename='img/drone_team_logo.jpg') }}"
-              >
-                <source src="{{ url_for('static', filename='videos/drone_intro.mp4') }}" type="video/mp4">
-              </video>
-            </div>
-            <!-- BOTTOM: Team Info -->
-            <article class="info-card">
-              <h2>About the Team</h2>
-              <div class="info-section">
-                <h3>How We Operate</h3>
-                <p>Team members will be selected based on merit and performance. A Soldier selected as a primary for the US Army Drone team
-                  will be provided a Memorandum of Understanding (MOU) establishing him or her on the team with acknowledgment from his or her 
-                  chain of command. The US Army Drone Team is not currently a centralized unit (TDA assignment). All Soldiers accepted on the team 
-                  will remain with their unit. All Training and competition will be funded as Temporary Duty (TDY) by the 1st Aviation Brigade at
-                  Ft Rucker, AL. </p>
-                  
-                  <p>Expect training and competitions to occur quarterly at a minimum. We will reevaluate a Soldier's position as a primary on the team 
-                  if the Soldier consistently is unable to attend training and/or competitions quarterly. Training and competition will be both within 
-                  the Continental United States (CONUS) and Outside the Continental United States (OCONUS). Soldiers on the team will be expected to
-                  acquire an Official Passport. </p>
+<div class="container grid">
+  <!-- Hero / Summary -->
+  <section class="card hero">
+    <h1>US Army Drone Team</h1>
+    <p>{{ summary|safe }}</p>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('team.apply') }}">Apply Now</a>
+      <a class="btn" href="{{ url_for('team.calendar') }}">View Full Calendar</a>
+    </div>
+  </section>
 
-                  <p>Only Army Service Members are permitted to apply and join the US Army Drone Team. If you have questions on expectations while on the 
-                  US Army Drone Team please reach out to usarmydroneteam@army.mil.
-                </p>
-              </div>
-              <div class="info-section">
-                <h3>Future Goals</h3>
-                <p>Within the next year we hope to establish the US Army Drone Team as an Army Sports team similar to the Army Rugby Team.</p>
-              </div>
-            </article>
+  <div class="three-col">
+    <!-- LEFT: Upcoming Events -->
+    <div class="col-left">
+      <section class="card sticky">
+        <h2 style="margin-top:0">Upcoming Events</h2>
+        {% if cal_id %}
+        <iframe
+          src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showCalendars=0&showTabs=0&showPrint=0&showDate=0&wkst=1&src={{ cal_id | urlencode }}&ctz={{ tz | urlencode }}"
+          style="border:0" width="100%" height="300" frameborder="0" scrolling="no">
+        </iframe>
+        <p style="margin:.5rem 0 0 0">
+          Need more? <a href="{{ url_for('team.calendar') }}">Open the full calendar</a>.
+        </p>
+        {% else %}
+        <p class="meta">Calendar not configured.</p>
+        {% endif %}
+      </section>
+      <section class="card">
+        <h2 style="margin-top:0">Velocidrone Instructions</h2>
+        <p style="margin-bottom:0">
+          <a href="{{ url_for('static', filename='docs/velocidrone_recruitment_instructions_v2.pdf') }}" target="_blank"
+            rel="noopener">
+            Download the Velocidrone racetrack instructions (PDF)
+          </a>
+        </p>
+      </section>
+    </div>
+
+    <!-- CENTER: Video above Flyer -->
+    <div class="col-center">
+      <section class="card team-flyer">
+        <div class="media-stack">
+          <!-- Video -->
+          <div class="video">
+            <video controls preload="metadata" autoplay muted loop controls playsinline
+              poster="{{ url_for('static', filename='img/drone_team_logo.jpg') }}">
+              <source src="{{ url_for('static', filename='videos/drone_intro.mp4') }}" type="video/mp4">
+            </video>
           </div>
-        </section>
-      </div>
+          <!-- BOTTOM: Team Info -->
+          <article class="info-card">
+            <h2>About the Team</h2>
+            <div class="info-section">
+              <h3>How We Operate</h3>
+              <p>Team members will be selected based on merit and performance. A Soldier selected as a primary for the
+                US Army Drone team
+                will be provided a Memorandum of Understanding (MOU) establishing him or her on the team with
+                acknowledgment from his or her
+                chain of command. The US Army Drone Team is not currently a centralized unit (TDA assignment). All
+                Soldiers accepted on the team
+                will remain with their unit. All Training and competition will be funded as Temporary Duty (TDY) by the
+                1st Aviation Brigade at
+                Ft Rucker, AL. </p>
 
-      
-        <!-- RIGHT: Team Structure & Roster -->
-        <div class="col-right">
-          <section class="card">
-            <h2 style="margin-top:0">Velocidrone Secure Access</h2>
-            {% if newsletter_subscribed %}
-              <p class="meta" style="margin:.5rem 0 1rem 0;">
-                Competition on the Velocidrone Track is now closed. The track will remain available for those that wish to practice for the next recruitment in April 2026. Thank you for subscribing to the US Army Drone Team Newsletter Distribution.
+              <p>Expect training and competitions to occur quarterly at a minimum. We will reevaluate a Soldier's
+                position as a primary on the team
+                if the Soldier consistently is unable to attend training and/or competitions quarterly. Training and
+                competition will be both within
+                the Continental United States (CONUS) and Outside the Continental United States (OCONUS). Soldiers on
+                the team will be expected to
+                acquire an Official Passport. </p>
+
+              <p>Only Army Service Members are permitted to apply and join the US Army Drone Team. If you have questions
+                on expectations while on the
+                US Army Drone Team please reach out to usarmydroneteam@army.mil.
               </p>
-            {% else %}
-              <p class="meta" style="margin:.5rem 0 1rem 0;">
-                Competition on the Velocidrone Track is now closed. The track will remain available for those that wish to practice for the next recruitment in April 2026. If you'd like to continue to follow the US Army Drone Team sign up to our Newsletter Distribution <a href="{{ url_for('team.subscribe_newsletter') }}">here</a>.
-              </p>
-            {% endif %}
-            {% if user_callsign %}
-              <div style="display:flex;flex-direction:column;gap:.5rem;">
-                <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
-                <strong>{{ user_callsign }}</strong>
-              </div>
-            {% else %}
-              <div class="actions" style="margin-top:1rem;">
-                <a class="btn btn--primary" href="{{ url_for('team.apply') }}">Apply Now</a>
-              </div>
-            {% endif %}
-          </section>
-          <section class="card">
-            <h2 style="margin-top:0">Newsletters</h2>
-            <p class="meta" style="margin:.5rem 0 1rem 0">Stay up to date with the latest US Army Drone Team articles and announcements.</p>
-            <div class="actions" style="margin-top:1rem">
-              <a
-                class="btn btn--primary"
-                href="{{ url_for('static', filename='docs/us_army_drone_team_newsletter.pdf') }}"
-                download
-              >
-                Download latest newsletter (PDF)
-              </a>
-              <a
-                class="btn btn--ghost"
-                href="{{ url_for('static', filename='docs/us_army_drone_team_newsletter.pdf') }}"
-                target="_blank"
-                rel="noopener"
-              >
-                Open in new tab
-              </a>
             </div>
-          </section>
-          <section class="card sticky">
-            <h2 style="margin-top:0">Team Structure & Roster</h2>
-            <div class="org">
-              {% for role, people in hierarchy.items() %}
-                <div class="tier">
-                  <h3>{{ role }}</h3>
-                  <div class="chips">
-                    {% for p in people %}
-                      <span class="chip">{{ p }}</span>
-                    {% endfor %}
-                  </div>
-                </div>
+            <div class="info-section">
+              <h3>Future Goals</h3>
+              <p>Within the next year we hope to establish the US Army Drone Team as an Army Sports team similar to the
+                Army Rugby Team.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- RIGHT: Team Structure & Roster -->
+    <div class="col-right">
+      <section class="card">
+        <h2 style="margin-top:0">Velocidrone Competition is Now Closed!</h2>
+        {% if newsletter_subscribed %}
+        <p class="meta" style="margin:.5rem 0 1rem 0;">
+          Competition on the Velocidrone Track is now closed. The track will remain available for those that wish to
+          practice for the next recruitment in April 2026. Thank you for subscribing to the US Army Drone Team
+          Newsletter Distribution.
+        </p>
+        {% else %}
+        <p class="meta" style="margin:.5rem 0 1rem 0;">
+          Competition on the Velocidrone Track is now closed. The track will remain available for those that wish to
+          practice for the next recruitment in April 2026. If you'd like to continue to follow the US Army Drone Team
+          sign up to our Newsletter Distribution <a href="{{ url_for('team.subscribe_newsletter') }}">here</a>.
+        </p>
+        {% endif %}
+        {% if user_callsign %}
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+          <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
+          <strong>{{ user_callsign }}</strong>
+        </div>
+        {% else %}
+        <div class="actions" style="margin-top:1rem;">
+          <a class="btn btn--primary" href="{{ url_for('team.apply') }}">Apply Now</a>
+        </div>
+        {% endif %}
+      </section>
+      <section class="card">
+        <h2 style="margin-top:0">Newsletters</h2>
+        <p class="meta" style="margin:.5rem 0 1rem 0">Stay up to date with the latest US Army Drone Team articles and
+          announcements.</p>
+        <div class="actions" style="margin-top:1rem">
+          <a class="btn btn--primary" href="{{ url_for('static', filename='docs/us_army_drone_team_newsletter.pdf') }}"
+            download>
+            Download latest newsletter (PDF)
+          </a>
+          <a class="btn btn--ghost" href="{{ url_for('static', filename='docs/us_army_drone_team_newsletter.pdf') }}"
+            target="_blank" rel="noopener">
+            Open in new tab
+          </a>
+        </div>
+      </section>
+      <section class="card sticky">
+        <h2 style="margin-top:0">Team Structure & Roster</h2>
+        <div class="org">
+          {% for role, people in hierarchy.items() %}
+          <div class="tier">
+            <h3>{{ role }}</h3>
+            <div class="chips">
+              {% for p in people %}
+              <span class="chip">{{ p }}</span>
               {% endfor %}
             </div>
-      
-            <div style="margin-top:1rem">
-              <h3 style="margin:.75rem 0 .25rem 0">Current Operators</h3>
-              <ul style="margin:.5rem 0 0 1.25rem">
-                {% for name in operators %}
-                  <li>{{ name }}</li>
-                {% endfor %}
-              </ul>
-            </div>
-          </section>
+          </div>
+          {% endfor %}
         </div>
-      </div>
-  </div>
-{% endblock %}
 
+        <div style="margin-top:1rem">
+          <h3 style="margin:.75rem 0 .25rem 0">Current Operators</h3>
+          <ul style="margin:.5rem 0 0 1.25rem">
+            {% for name in operators %}
+            <li>{{ name }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
