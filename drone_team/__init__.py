@@ -142,6 +142,7 @@ def create_app(override=False):
             "team.apply",
             "team.calendar",
             "team.faq",
+            "team.subscribe_newsletter",
             "core.license_page",
             "core.license_document",
             "core.disclaimer_page",
