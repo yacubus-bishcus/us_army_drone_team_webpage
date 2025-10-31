@@ -1,4 +1,5 @@
 pandas
+openpyxl
 flask
 gunicorn
 flask-login
