@@ -1,20 +1,20 @@
 """Generate Word documents for applicants based on callsigns.
 
 This script reads a list of callsigns from a plain text file, finds the
-corresponding applicant rows in an Excel spreadsheet, and writes each row's
-information into an individual Word document. The resulting files are saved
-using the pattern ``<username>_<name>_<callsign>.doc``.
+corresponding applicant rows in a CSV file, and writes each row's information
+into an individual Word document. The resulting files are saved using the
+pattern ``<username>_<name>_<callsign>.doc``.
 
 Example usage::
 
     python -m scripts.generate_applicant_docs \
         --callsigns-file callsigns.txt \
-        --excel-file applicants.xlsx \
+        --csv-file applicants.csv \
         --output-dir output_docs
 
-The Excel sheet is expected to contain at least the columns ``username``,
-``name`` and ``callsign``. Their names can be customized with optional command
-line arguments.
+The CSV is expected to contain at least the columns ``username``, ``name`` and
+``callsign``. Their names can be customized with optional command line
+arguments.
 """
 
 from __future__ import annotations
@@ -92,15 +92,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Text file containing one callsign per line.",
     )
     parser.add_argument(
-        "--excel-file",
+        "--csv-file",
         required=True,
         type=Path,
-        help="Excel spreadsheet containing applicant information.",
-    )
-    parser.add_argument(
-        "--sheet-name",
-        default=0,
-        help="Name or index of the sheet to read (defaults to the first sheet).",
+        help="CSV file containing applicant information.",
     )
     parser.add_argument(
         "--output-dir",
@@ -130,15 +125,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
 
     if not args.callsigns_file.exists():
-        raise SystemExit(f"Calls sign file not found: {args.callsigns_file}")
-    if not args.excel_file.exists():
-        raise SystemExit(f"Excel file not found: {args.excel_file}")
+        raise SystemExit(f"Callsign file not found: {args.callsigns_file}")
+    if not args.csv_file.exists():
+        raise SystemExit(f"CSV file not found: {args.csv_file}")
 
     callsigns = _load_callsigns(args.callsigns_file)
     if not callsigns:
         raise SystemExit("No callsigns provided.")
 
-    frame = pd.read_excel(args.excel_file, sheet_name=args.sheet_name)
+    frame = pd.read_csv(args.csv_file)
     normalised_columns = _normalise_columns(frame.columns)
 
     def resolve(column_name: str) -> str:
