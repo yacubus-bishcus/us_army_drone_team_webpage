@@ -12,9 +12,10 @@ us_army_drone_team_webpage.code-workspace
 /bin/
 signal_log.log
 data/data/news_articles.csv
+data/data/Final_Applicant_Docs
 *__pycache__
 *.log
 .vscode
 *_backup*
 .~lock.*
-top_callsigns.txt
+top_callsigns*
