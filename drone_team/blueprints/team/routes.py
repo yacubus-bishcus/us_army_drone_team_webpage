@@ -56,7 +56,7 @@ def index():
         "and operational dominance in modern warfare through national and international competitions. "
         "By recruiting and training the next generation of drone operators, the Army Drone Team advances "
         "tactical and technical capabilities aligned with the Army's Continuous Transformation Initiative. "
-        "The Velocidrone Competition Track is now closed. Official results will be announced NLT 5 November 2025."
+        "The Velocidrone Competition Track is now closed. The track will reopen 20 April 2026. "
         ' The official team SharePoint page can be found '
         '<a href="https://armyeitaas.sharepoint-mil.us/:u:/t/USArmyGoldenHawks/EZDhwGB7X9pNnu3rUfrio30BHdELBnK-iSsySi7YV4RwoQ?e=Sbwk9y" target="_blank">here</a>.'
     )
@@ -66,8 +66,8 @@ def index():
         "NCOIC": ["SSG Smith"]
     }
 
-    operators = ["New Team Members Will Be Announced NLT 05 November 2025"]
-
+    operators = ["CPT Johnson", "CPT Rosenberger", "CPT Thompson", "SFC Teran", "SFC Ringsmuth", "SSG Caliz", "SGT Koehn","SGT Bradley", "SGT Kohl", "SGT Jones", "SGT Brower", 
+    "SSG Smith", "SGT Cantu", "SSG Schiller", "SGT Viveros", "SSG Ortiz-Vazquez", "PFC Sund", "CW2 Carpenter", "PFC Simpson"]
     # Pass calendar config to the template for the iframe embed
     cal_id = current_app.config.get("GOOGLE_CALENDAR_ID", "").strip()
     tz = current_app.config.get("TIMEZONE", "America/New_York").strip()
@@ -127,9 +127,16 @@ def faq():
             ),
         },
         {
+            "question": "If I'm already on the US Army Drone Team do I need to reapply?",
+            "answer": (
+                "No. However, if you tried out for the team last October and were not notified that you made the team during the last application you will need to reapply."
+            )
+
+        },
+        {
             "question": "How many Soldiers will be selected to the US Army Drone Team? Will there be alternates?",
             "answer": (
-                "20 Soldiers will be selected as primaries for the US Army Drone Team. There will be alternates, "
+                "The US Army Drone Team already consists of 30 total Soldiers. An additional 20 Soldiers will be selected as primaries for the US Army Drone Team. There will be alternates, "
                 "but only the 20 primaries will have training funded quarterly."
             ),
         },
@@ -154,7 +161,7 @@ def faq():
         {
             "question": "Should I even log my time on the Velocidrone track if I can't beat the top twenty times?",
             "answer": (
-                "Yes, absolutely! The Soldiers selected will be chosen based on their ability to represent the US Army as the best overall drone operators. Additionally, Soldiers that logged times during the competition will be considered as alternates for the team. Alternates may be given opportunities to train and compete for the team if primaries are unable to attend."
+                "Yes, absolutely! The Soldiers selected will be chosen based on their ability to represent the US Army as the best overall drone operators. Furthermore, some times may be from Soldiers already on the team that will not be counted against you. Additionally, Soldiers that logged times during the competition will be considered as alternates for the team. Alternates may be given opportunities to train and compete for the team if primaries are unable to attend."
             ),
 
         },
