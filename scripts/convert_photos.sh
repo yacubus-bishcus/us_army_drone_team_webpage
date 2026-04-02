@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SRC_DIR="/home/Python_Files/us_army_drone_team_webpage/static/img/Drone_Pics"
+SRC_DIR="Drone_Pics"
 OUT_DIR="Drone_Pics_jpg"
 QUALITY=92
 
