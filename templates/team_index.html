@@ -337,6 +337,41 @@
     overflow: auto;
   }
 
+  .timeline {
+    position: relative;
+    margin: 20px 0;
+    padding-left: 30px;
+    border-left: 2px solid #ccc;
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding-left: 15px;
+    /* adds space between dot and text */
+  }
+
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    background-color: #ff6a00;
+    /* adjust to your theme */
+    border-radius: 50%;
+  }
+
+  .timeline-date {
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .timeline-content {
+    color: #555;
+  }
+
   /* Org / roster chips */
   .org {
     display: grid;
@@ -402,7 +437,7 @@
     <p>{{ summary|safe }}</p>
     <div class="actions">
       <a class="btn" href="{{ url_for('team.apply') }}">Apply Now</a>
-      <a class="btn" href="{{ url_for('team.calendar') }}">View Full Calendar</a>
+      <a class="btn" href="{{ url_for('team.calendar') }}">View Full Calendar (POAM)</a>
     </div>
   </section>
 
@@ -410,19 +445,47 @@
     <!-- LEFT: Upcoming Events -->
     <div class="col-left">
       <section class="card sticky">
-        <h2 style="margin-top:0">Upcoming Events</h2>
-        {% if cal_id %}
-        <iframe
-          src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showCalendars=0&showTabs=0&showPrint=0&showDate=0&wkst=1&src={{ cal_id | urlencode }}&ctz={{ tz | urlencode }}"
-          style="border:0" width="100%" height="300" frameborder="0" scrolling="no">
-        </iframe>
-        <p style="margin:.5rem 0 0 0">
-          Need more? <a href="{{ url_for('team.calendar') }}">Open the full calendar</a>.
+        <h2 style="margin-top:0;">Upcoming Events</h2>
+
+        <div class="timeline">
+
+          <div class="timeline-item">
+            <div class="timeline-date">20 Apr – 4 May</div>
+            <div class="timeline-content">VelociDrone Recruitment</div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-date">15–17 May</div>
+            <div class="timeline-content">Raptor Drone Race — Hoffman, NC</div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-date">17–18 May</div>
+            <div class="timeline-content">SERE Training — Ft Rucker, AL</div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-date">1–5 June</div>
+            <div class="timeline-content">SkillsUSA Conference — Atlanta, GA</div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-date">June</div>
+            <div class="timeline-content">National Drone Association Competition</div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-date">June</div>
+            <div class="timeline-content">Artificial Intelligence Exposition — Washington, DC</div>
+          </div>
+
+        </div>
+
+        <p style="margin-top:12px; margin-bottom:0;">
+          See POAM (Full Calendar) for additional events!
         </p>
-        {% else %}
-        <p class="meta">Calendar not configured.</p>
-        {% endif %}
       </section>
+
       <section class="card">
         <h2 style="margin-top:0">Velocidrone Instructions</h2>
         <p style="margin-bottom:0">
@@ -442,7 +505,7 @@
           <div class="video">
             <video controls preload="metadata" autoplay muted loop controls playsinline
               poster="{{ url_for('static', filename='img/drone_team_logo.jpg') }}">
-              <source src="{{ url_for('static', filename='videos/drone_intro.mp4') }}" type="video/mp4">
+              <source src="{{ url_for('static', filename='videos/drone_showcase.mp4') }}" type="video/mp4">
             </video>
           </div>
           <!-- BOTTOM: Team Info -->

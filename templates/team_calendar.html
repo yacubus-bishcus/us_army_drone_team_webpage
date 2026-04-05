@@ -1,27 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Drone Team Calendar – drone_team{% endblock %}
+
 {% block content %}
 <style>
-  .container{width:92%;max-width:1000px;margin:2rem auto}
-  .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
-  .btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--muted);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:inherit}
-  .btn:hover{filter:brightness(.97)}
+  .container {
+    width: 92%;
+    max-width: 1000px;
+    margin: 2rem auto;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    border: 1px solid var(--border-strong);
+    background: var(--muted);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+    margin-right: 0.5rem;
+  }
+
+  .btn:hover {
+    filter: brightness(.97);
+  }
 </style>
 
 <div class="container">
   <div class="card">
-    <h1 style="margin-top:0">Drone Team Calendar</h1>
+    <h1 style="margin-top:0;">Drone Team Calendar</h1>
 
-    {% if cal_id %}
-      <iframe
-        src="https://calendar.google.com/calendar/embed?src={{ cal_id | urlencode }}&ctz={{ tz | urlencode }}&showTitle=0&showCalendars=0&showPrint=0"
-        style="border:0" width="100%" height="650" frameborder="0" scrolling="no">
-      </iframe>
-    {% else %}
-      <p class="meta">Calendar not configured.</p>
-    {% endif %}
+    <object data="{{ url_for('static', filename='docs/team_calendar.pdf') }}" type="application/pdf" width="100%"
+      height="650">
+      <p>
+        Your browser cannot display PDFs.
+        <a href="{{ url_for('static', filename='docs/team_calendar.pdf') }}" target="_blank">
+          Open the PDF
+        </a>
+      </p>
+    </object>
 
-    <p style="margin-top:1rem">
+    <p style="margin-top:1rem;">
+      <a class="btn" href="{{ url_for('static', filename='docs/team_calendar.pdf') }}" target="_blank">Open PDF</a>
       <a class="btn" href="{{ url_for('team.index') }}">Back to Team</a>
       <a class="btn" href="{{ url_for('team.apply') }}">Apply Now</a>
     </p>
