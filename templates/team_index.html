@@ -561,6 +561,10 @@
         <div style="display:flex;flex-direction:column;gap:.5rem;">
           <p class="meta" style="margin:0;">Velocidrone callsign on file:</p>
           <strong>{{ user_callsign }}</strong>
+          {% if velocidrone_passcode %}
+          <p class="meta" style="margin:0;">Velocidrone passcode:</p>
+          <strong>{{ velocidrone_passcode }}</strong>
+          {% endif %}
         </div>
         {% else %}
         <div class="actions" style="margin-top:1rem;">
