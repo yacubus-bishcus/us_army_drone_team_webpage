@@ -1,4 +1,5 @@
 .env 
+.venv_drone
 data/user.db
 data/aar.csv
 data/uas_data.csv 
@@ -19,3 +20,4 @@ data/data/Final_Applicant_Docs
 *_backup*
 .~lock.*
 top_callsigns*
+.python-version
