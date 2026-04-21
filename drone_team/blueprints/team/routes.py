@@ -73,6 +73,7 @@ def index():
     tz = current_app.config.get("TIMEZONE", "America/New_York").strip()
 
     user_callsign = _get_user_callsign(current_app, current_user)
+    velocidrone_passcode = (current_app.config.get("VELOCIDRONE_PASSCODE") or "").strip()
 
     newsletter_subscribed = bool(getattr(current_user, "newsletter_opt_in", False))
 
@@ -84,6 +85,7 @@ def index():
         cal_id=cal_id,
         tz=tz,
         user_callsign=user_callsign,
+        velocidrone_passcode=velocidrone_passcode,
         newsletter_subscribed=newsletter_subscribed,
     )
 
