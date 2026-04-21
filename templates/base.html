@@ -1,6 +1,7 @@
 <!-- drone_team/templates/base.html -->
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>{% block title %}drone_team{% endblock %}</title>
@@ -10,9 +11,9 @@
 <body{% block body_attrs %}{% endblock %}>
   {% include "partials/nav.html" %}
   <div class="site-banner" role="status" aria-live="polite">
-    <span class="site-banner__text">The Velocidrone Track Competition is Now Closed!</span>
+    <span class="site-banner__text">The Velocidrone Track Competition is Now Open!</span>
   </div>
-  <main class="site-main"{% block main_attrs %}{% endblock %}>
+  <main class="site-main" {% block main_attrs %}{% endblock %}>
     {% block content %}{% endblock %}
   </main>
   <footer class="site-footer">
@@ -22,5 +23,6 @@
       <a href="{{ url_for('core.disclaimer_page') }}">Disclaimer</a>
     </div>
   </footer>
-</body>
+  </body>
+
 </html>
