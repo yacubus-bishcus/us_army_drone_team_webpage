@@ -2,6 +2,8 @@
 {% block title %}US Army Drone Team – drone_team{% endblock %}
 {% block body_attrs %} class="team-page"{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <style>
   body.team-page {
     position: relative;
@@ -280,6 +282,40 @@
     color: rgba(226, 232, 240, 0.88);
   }
 
+  .team-map-section {
+    display: grid;
+    gap: .75rem;
+    margin-top: .5rem;
+  }
+
+  .team-map-section h3 {
+    margin: 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: rgba(226, 232, 240, 0.85);
+  }
+
+  .team-map-description {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.85);
+    line-height: 1.5;
+  }
+
+  #usadt-global-map {
+    width: 100%;
+    min-height: 420px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.1);
+  }
+
+  .map-legend {
+    margin: 0;
+    font-size: .92rem;
+    color: rgba(226, 232, 240, 0.78);
+  }
+
   .btn--primary {
     background: linear-gradient(135deg, #1f9d55, #15803d);
     color: #fff;
@@ -537,6 +573,16 @@
               <p>Within the next year we hope to establish the US Army Drone Team as an Army Sports team similar to the
                 Army Rugby Team.</p>
             </div>
+            <section class="team-map-section" aria-labelledby="team-map-heading">
+              <h3 id="team-map-heading">Global Team Distribution Map</h3>
+              <p class="team-map-description">
+                Explore the main military bases that currently support the US Army Drone Team. Select a marker to view
+                each location's represented units and total Soldiers.
+              </p>
+              <div id="usadt-global-map" role="application"
+                aria-label="Interactive world map showing military bases and drone team representation."></div>
+              <p class="map-legend">Marker size scales with represented Soldier count.</p>
+            </section>
           </article>
         </div>
       </section>
@@ -614,4 +660,65 @@
     </div>
   </div>
 </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const mapContainer = document.getElementById("usadt-global-map");
+    if (!mapContainer || typeof L === "undefined") return;
+
+    const baseData = [
+      { base: "Fort Rucker", country: "United States", units: 1, soldiers: 2, lat: 31.3497, lng: -85.7156 },
+      { base: "Fort Bragg", country: "United States", units: 3, soldiers: 3, lat: 35.1415, lng: -79.0060 },
+      { base: "Fort Campbell", country: "United States", units: 1, soldiers: 2, lat: 36.6681, lng: -87.4762 },
+      { base: "JBLM", country: "United States", units: 1, soldiers: 1, lat: 47.1095, lng: -122.5899 },
+      { base: "USAG Bavaria (Grafenwöhr)", country: "Germany", units: 2, soldiers: 6, lat: 49.6987, lng: 11.9403 },
+      { base: "Camp Humphreys", country: "South Korea", units: 0, soldiers: 0, lat: 36.9651, lng: 127.0337 },
+      { base: "Camp Zama", country: "Japan", units: 0, soldiers: 0, lat: 35.4886, lng: 139.4075 },
+      { base: "Fort Riley", country: "United States", units: 0, soldiers: 0, lat: 39.0742, lng: -96.7711 },
+      { base: "Fort Huachuca", country: "United States", units: 1, soldiers: 2, lat: 31.5474, lng: -110.2777 },
+      { base: "Fort Meade", country: "United States", units: 1, soldiers: 1, lat: 39.1083, lng: -76.7430 },
+      { base: "Fort Carson", country: "United States", units: 1, soldiers: 1, lat: 38.7410, lng: -104.7882 },
+      { base: "Fort Hood", country: "United States", units: 2, soldiers: 5, lat: 31.1349, lng: -97.7800 },
+      { base: "Ft Stewart", country: "United States", units: 1, soldiers: 1, lat: 31.8691, lng: -81.6090 },
+      { base: "Hunter Army Airfield", country: "United States", units: 1, soldiers: 1, lat: 32.0103, lng: -81.1457 },
+      { base: "Fort McClellan", country: "United States", units: 1, soldiers: 2, lat: 33.7065, lng: -85.7357 },
+      { base: "Camp Ethan Allen", country: "United States", units: 1, soldiers: 1, lat: 44.5037, lng: -72.9759 },
+      { base: "Schofield Barracks", country: "United States", units: 1, soldiers: 1, lat: 21.4935, lng: -158.0618 },
+      { base: "AI2C", country: "United States", units: 1, soldiers: 1, lat: 40.4446, lng: -79.9430 },
+      { base: "Fort Drum", country: "United States", units: 1, soldiers: 1, lat: 44.0500, lng: -75.7612 },
+      { base: "Fort Bliss", country: "United States", units: 0, soldiers: 0, lat: 31.8123, lng: -106.4217 },
+      { base: "USAG Italy (Vicenza)", country: "Italy", units: 0, soldiers: 0, lat: 45.5455, lng: 11.5354 }
+    ];
+
+    const map = L.map(mapContainer, {
+      worldCopyJump: true,
+      scrollWheelZoom: true
+    }).setView([22, 7], 2);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 7,
+      minZoom: 2,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    baseData.forEach(function (entry) {
+      const markerRadius = Math.max(8, Math.min(20, Math.round(entry.soldiers / 4)));
+      const marker = L.circleMarker([entry.lat, entry.lng], {
+        radius: markerRadius,
+        color: "#22d3ee",
+        weight: 2,
+        fillColor: "#10b981",
+        fillOpacity: 0.78
+      }).addTo(map);
+
+      marker.bindPopup(
+        "<strong>" + entry.base + "</strong><br>" +
+        entry.country + "<br>" +
+        "Units represented: " + entry.units + "<br>" +
+        "Soldiers represented: " + entry.soldiers
+      );
+    });
+  });
+</script>
 {% endblock %}
