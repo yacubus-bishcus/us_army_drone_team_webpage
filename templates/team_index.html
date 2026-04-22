@@ -668,14 +668,27 @@
     if (!mapContainer || typeof L === "undefined") return;
 
     const baseData = [
-      { base: "Fort Novosel", country: "United States", units: 5, soldiers: 72, lat: 31.3497, lng: -85.7156 },
-      { base: "Fort Liberty", country: "United States", units: 4, soldiers: 58, lat: 35.1415, lng: -79.0060 },
-      { base: "Fort Campbell", country: "United States", units: 3, soldiers: 41, lat: 36.6681, lng: -87.4762 },
-      { base: "Joint Base Lewis-McChord", country: "United States", units: 4, soldiers: 46, lat: 47.1095, lng: -122.5899 },
-      { base: "USAG Bavaria (Grafenwöhr)", country: "Germany", units: 2, soldiers: 24, lat: 49.6987, lng: 11.9403 },
-      { base: "Camp Humphreys", country: "South Korea", units: 2, soldiers: 27, lat: 36.9651, lng: 127.0337 },
-      { base: "Camp Zama", country: "Japan", units: 1, soldiers: 16, lat: 35.4886, lng: 139.4075 },
-      { base: "USAG Italy (Vicenza)", country: "Italy", units: 1, soldiers: 14, lat: 45.5455, lng: 11.5354 }
+      { base: "Fort Rucker", country: "United States", units: 1, soldiers: 2, lat: 31.3497, lng: -85.7156 },
+      { base: "Fort Bragg", country: "United States", units: 3, soldiers: 3, lat: 35.1415, lng: -79.0060 },
+      { base: "Fort Campbell", country: "United States", units: 1, soldiers: 2, lat: 36.6681, lng: -87.4762 },
+      { base: "JBLM", country: "United States", units: 1, soldiers: 1, lat: 47.1095, lng: -122.5899 },
+      { base: "USAG Bavaria (Grafenwöhr)", country: "Germany", units: 2, soldiers: 6, lat: 49.6987, lng: 11.9403 },
+      { base: "Camp Humphreys", country: "South Korea", units: 0, soldiers: 0, lat: 36.9651, lng: 127.0337 },
+      { base: "Camp Zama", country: "Japan", units: 0, soldiers: 0, lat: 35.4886, lng: 139.4075 },
+      { base: "Fort Riley", country: "United States", units: 0, soldiers: 0, lat: , lng: },
+      { base: "Fort Huachuca", country: "United States", units: 1, soldiers: 2, lat:, lng: },
+      { base: "Fort Meade", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Fort Carson", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Fort Hood", country: "United States", units: 2, soldiers: 5, lat:, lng:},
+      { base: "Ft Stewart", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Hunter Army Airfield", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Fort Montgomery", country: "United States", units: 1, soldiers: 2, lat:, lng:},
+      { base: "Camp Ethan Allen", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Schofield Barracks", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "AI2C", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Fort Drum", country: "United States", units: 1, soldiers: 1, lat:, lng:},
+      { base: "Fort Bliss", country: "United States", units: 0, soldiers: 0, lat:, lng:},
+      { base: "USAG Italy (Vicenza)", country: "Italy", units: 0, soldiers: 0, lat: 45.5455, lng: 11.5354 }
     ];
 
     const map = L.map(mapContainer, {
