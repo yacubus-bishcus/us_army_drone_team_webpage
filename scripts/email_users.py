@@ -10,6 +10,8 @@ An optional ``--applicants`` flag targets only users that have submitted an appl
 
 An optional ``--callsigns-file`` flag targets emails based on the leaderboard callsigns and sends them a custom message.
 
+An optional ``--repeat-failed`` flag reads a previous log file and retries only recipients from lines like ``ERROR: Failure when sending to USERNAME (email@example.com)``.
+
 Usage (from the project root)::
 
     python -m scripts.email_users --dry_run --subject "Subject" --message "Message"
@@ -17,6 +19,7 @@ Usage (from the project root)::
     python -m scripts.email_users --dry_run --applicants --subject "Subject" --message "Message"
     python -m scripts.email_users --callsigns-file callsigns.txt --subject "Subject" --message "Message"
     python -m scripts.email_users --delay-seconds 2 --subject "Subject" --message "Message"
+    python -m scripts.email_users --repeat-failed failed_email_log.txt --subject "Subject" --message "Message"
 
 Use ``--dry-run`` to see which addresses would receive the message
 without actually sending any email. Within messages insert variable {username} to address users.
@@ -24,7 +27,7 @@ without actually sending any email. Within messages insert variable {username} t
 
 from __future__ import annotations
 
-import argparse, logging, os, time
+import argparse, logging, os, re, time
 from pathlib import Path 
 from typing import Iterable, List, Set, Tuple
 from .load_user_env import load_environment
@@ -47,8 +50,69 @@ MISSING_APP_BODY_TEMPLATE = (
 )
 
 
+FAILED_SEND_RE = re.compile(
+    r"Failure when sending(?: reminder)? to\s+(?P<username>.*?)\s+"
+    r"\((?P<email>[^()\s]+@[^()\s]+)\)",
+    re.IGNORECASE,
+)
+
+
 def unescape_newlines(s: str) -> str:
     return s.replace("\\n", "\n")
+
+
+def load_failed_recipients_from_log(path: str | os.PathLike[str]) -> List[Tuple[str, str]]:
+    """Return unique (email, username) pairs parsed from previous failure logs."""
+
+    provided_path = Path(path)
+
+    if provided_path.is_absolute():
+        candidate_paths = [provided_path]
+    else:
+        scripts_dir = Path(__file__).resolve().parent
+        project_root = scripts_dir.parent
+        candidate_paths = [project_root / provided_path, scripts_dir / provided_path]
+
+    file_path: Path | None = None
+    for candidate in candidate_paths:
+        if candidate.is_file():
+            file_path = candidate
+            break
+
+    if file_path is None:
+        searched = ", ".join(str(candidate) for candidate in candidate_paths)
+        raise FileNotFoundError(
+            f"Failed-email log file not found. Looked in: {searched or provided_path}"
+        )
+
+    recipients: List[Tuple[str, str]] = []
+    seen_emails: Set[str] = set()
+    ignored_lines = 0
+
+    with file_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            match = FAILED_SEND_RE.search(line)
+            if not match:
+                if line.strip():
+                    ignored_lines += 1
+                continue
+
+            username = match.group("username").strip()
+            email = match.group("email").strip()
+            normalized_email = email.lower()
+            if not username or normalized_email in seen_emails:
+                continue
+
+            seen_emails.add(normalized_email)
+            recipients.append((email, username))
+
+    if ignored_lines:
+        logging.info(
+            "Ignored %d line(s) that did not match the failed-send log format.",
+            ignored_lines,
+        )
+
+    return recipients
 
 def fetch_user_emails(
     app, *, callsigns: Iterable[str] | None = None
@@ -375,6 +439,17 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument(
+        "--repeat-failed",
+        dest="repeat_failed",
+        type=str,
+        default=None,
+        help=(
+            "Path to a previous email log file. Only recipients from lines like "
+            "'ERROR: Failure when sending to USERNAME (email@example.com)' will "
+            "be retried."
+        ),
+    )
+    parser.add_argument(
         "--admin_email",
         dest="admin_email",
         action="store_true",
@@ -425,10 +500,18 @@ def main() -> None:
     callsign_pairs: List[Tuple[str, str]] = []
     recipients: List[Tuple[str, str]] = []
     matched_callsigns: Set[str] = set()
+    repeat_failed = args.repeat_failed
     delay_seconds = max(args.delay_seconds or 0, 0)
 
     if missing_applications and applicants:
         logging.error("The --missing_applications and --applicants flags cannot be used together.")
+        return
+
+    if repeat_failed and (missing_applications or applicants or args.callsigns_file):
+        logging.error(
+            "The --repeat-failed flag cannot be combined with --missing_applications, "
+            "--applicants, or --callsigns-file."
+        )
         return
 
     if args.callsigns_file:
@@ -455,7 +538,23 @@ def main() -> None:
             logging.warning("No subject or message body found.")
             return
 
-    if missing_applications:
+    if repeat_failed:
+        try:
+            recipients = load_failed_recipients_from_log(repeat_failed)
+        except OSError as exc:
+            logging.error("Unable to read failed-email log file '%s': %s", repeat_failed, exc)
+            return
+
+        if not recipients:
+            logging.warning("No failed recipients found in %s.", repeat_failed)
+            return
+
+        logging.info(
+            "Prepared to retry message to %d previously failed recipients from %s.",
+            len(recipients),
+            repeat_failed,
+        )
+    elif missing_applications:
         recipients = fetch_missing_application_users(app)
         if not recipients:
             logging.warning("No users without applications were found.")
