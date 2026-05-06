@@ -98,9 +98,10 @@ def send_email(app, to, subject, body, attachments=None, cc=None, bcc=None)->boo
 
     try:
         _smtp_send(app, msg)
-        return True 
-    except:
-        return False 
+        return True
+    except Exception as exc:
+        app.logger.exception("MAIL: Failed to send email to %s: %s", msg["To"], exc)
+        return False
 
 
 def send_admin_email(app, subject: str, body: str, *, max_retries: int = 2, backoff_sec: float = 1.5) -> bool:
