@@ -1,7 +1,7 @@
 ---
 current_version: v2.0
 development_version: v2.1
-cao: 5APR2026
+cao: 5MAY2026
 ---
 # US Army Drone Team Webpage Limited Distribution
 Current Deployed Version: {{page.current_version}}
