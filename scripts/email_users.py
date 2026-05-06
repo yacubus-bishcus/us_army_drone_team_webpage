@@ -2,7 +2,7 @@
 
 This script connects to the configured users database, gathers every
 non-empty email address from the ``users`` table, and sends each
-recipient a message. Emails are dispatched individually so delivery failures for one address do not affect the others. 
+recipient a message. Emails are dispatched individually so delivery failures for one address do not affect the others. Use ``--delay-seconds`` to throttle bulk sends when an SMTP provider enforces rate limits.
 
 An optional ``--missing_applications`` flag targets only users who have not yet submitted an application and sends them a pre-defined reminder message.
 
@@ -16,6 +16,7 @@ Usage (from the project root)::
     python -m scripts.email_users --dry_run --missing_applications
     python -m scripts.email_users --dry_run --applicants --subject "Subject" --message "Message"
     python -m scripts.email_users --callsigns-file callsigns.txt --subject "Subject" --message "Message"
+    python -m scripts.email_users --delay-seconds 2 --subject "Subject" --message "Message"
 
 Use ``--dry-run`` to see which addresses would receive the message
 without actually sending any email. Within messages insert variable {username} to address users.
@@ -23,7 +24,7 @@ without actually sending any email. Within messages insert variable {username} t
 
 from __future__ import annotations
 
-import argparse, logging, os
+import argparse, logging, os, time
 from pathlib import Path 
 from typing import Iterable, List, Set, Tuple
 from .load_user_env import load_environment
@@ -391,6 +392,18 @@ def parse_args() -> argparse.Namespace:
             "environment enables them."
         )
     )
+
+    parser.add_argument(
+        "--delay-seconds",
+        dest="delay_seconds",
+        type=float,
+        default=float(os.getenv("EMAIL_USERS_DELAY_SECONDS", "0") or 0),
+        help=(
+            "Seconds to pause after each SMTP send attempt. This can help avoid "
+            "provider rate limits during bulk notifications. Defaults to the "
+            "EMAIL_USERS_DELAY_SECONDS environment variable or 0."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -412,6 +425,7 @@ def main() -> None:
     callsign_pairs: List[Tuple[str, str]] = []
     recipients: List[Tuple[str, str]] = []
     matched_callsigns: Set[str] = set()
+    delay_seconds = max(args.delay_seconds or 0, 0)
 
     if missing_applications and applicants:
         logging.error("The --missing_applications and --applicants flags cannot be used together.")
@@ -538,6 +552,9 @@ def main() -> None:
                         username,
                         email,
                     )
+
+                if delay_seconds:
+                    time.sleep(delay_seconds)
         else:
             for email, username in recipients:
                 if args.dry_run:
@@ -569,6 +586,9 @@ def main() -> None:
                     logging.info("Email sent to %s (%s)", username, email)
                 else:
                     logging.error("Failure when sending to %s (%s)", username, email)
+
+                if delay_seconds:
+                    time.sleep(delay_seconds)
 
         if args.admin_email:
             admin_subject = subject
