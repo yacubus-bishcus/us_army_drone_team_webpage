@@ -5,6 +5,8 @@ data/aar.csv
 data/uas_data.csv 
 data/aar_files/
 drone_venv/
+venv/
+users.db
 data/data/drone_team_apps.csv
 skynet.db
 scripts/army_drone_team_qr.png
